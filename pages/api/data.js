@@ -7,9 +7,6 @@ const REPO   = 'digiteam-dashboard';
 const BRANCH = 'main';
 const PATH   = 'mapping.json';
 
-// ── Status thresholds (days) ────────────────────────────────────────────────
-const STALE_DAYS = 30;
-
 async function getMapping() {
   try {
     const res = await fetch(
@@ -32,54 +29,52 @@ async function getMapping() {
 // ── Auto-compute project health from live data ──────────────────────────────
 //
 // Status priority (highest wins):
-//   BLOCKED   — GitHub has issues labelled "blocked" OR Userback has tickets "on hold"
-//   STALE     — Has open items but nothing updated in the last 30 days across both sources
-//   IN FLIGHT — Has activity across BOTH GitHub AND Userback (multi-front work)
-//   ACTIVE    — Has open items in at least one source with recent updates
-//   CLEAR     — No open items in either source
+//
+//   BLOCKED   — GitHub issues labelled "blocked" OR Userback tickets "on hold"
+//   STALE     — Has open items but NO recent activity: no items updated in
+//               the last 14 days AND no issues closed / tickets resolved
+//               in the last 7 days
+//   IN FLIGHT — Active work across BOTH GitHub AND Userback simultaneously
+//   ACTIVE    — Has open items OR recent closures/resolutions in at least
+//               one source
+//   CLEAR     — No open items and no recent activity in either source
 //
 function computeHealth({ github, userback }) {
   const ghBlocked    = github?.blocked?.length    || 0;
   const ghStale      = github?.stale?.length      || 0;
   const ghInProgress = github?.inProgress?.length  || 0;
   const ghOpen       = github?.open?.length        || 0;
+  const ghClosedRecently = github?.closedThisWeek?.length || 0;
   const ghTotal      = ghBlocked + ghStale + ghInProgress + ghOpen;
 
   const ubOpen       = userback?.open?.length       || 0;
   const ubInProgress = userback?.inProgress?.length  || 0;
   const ubOnHold     = userback?.onHold?.length      || 0;
+  const ubResolvedRecently = userback?.resolvedThisWeek?.length || 0;
   const ubTotal      = ubOpen + ubInProgress + ubOnHold;
 
-  const totalActive  = ghTotal + ubTotal;
+  const totalOpen    = ghTotal + ubTotal;
 
   // 1. Blocked: any blocked GitHub issues or on-hold Userback tickets
   if (ghBlocked > 0 || ubOnHold > 0) return 'blocked';
 
-  // 2. Stale: has open items but ALL are stale (no recent updates)
-  if (totalActive > 0) {
-    const ghAllStale = ghTotal > 0 && ghTotal === ghStale;
-    const ubAllStale = ubTotal > 0 && ubTotal === ubOpen; // open but not in-progress = likely stale
-    const hasGH = ghTotal > 0;
-    const hasUB = ubTotal > 0;
+  // 2. Check for recent activity signals
+  //    "Recent" = items updated within 14 days (github.open + github.inProgress)
+  //              OR items closed/resolved within 7 days
+  const ghHasRecentWork = (ghInProgress + ghOpen) > 0 || ghClosedRecently > 0;
+  const ubHasRecentWork = ubInProgress > 0 || ubResolvedRecently > 0;
+  const anyRecentWork   = ghHasRecentWork || ubHasRecentWork;
 
-    // Check if issue last-update dates are all beyond stale threshold
-    const ghHasRecent = (ghInProgress + ghOpen) > 0;
-    const ubHasRecent = ubInProgress > 0;
+  // 3. Stale: has open items but NO recent work anywhere
+  if (totalOpen > 0 && !anyRecentWork) return 'stale';
 
-    if (hasGH && !ghHasRecent && hasUB && !ubHasRecent) return 'stale';
-    if (hasGH && !hasUB && ghAllStale) return 'stale';
-    if (hasUB && !hasGH && ubAllStale && !ubHasRecent) return 'stale';
-  }
+  // 4. In Flight: recent work across BOTH GitHub AND Userback
+  if (ghHasRecentWork && ubHasRecentWork) return 'inflight';
 
-  // 3. In Flight: active on BOTH GitHub and Userback simultaneously
-  const ghActive = (ghInProgress + ghOpen) > 0;
-  const ubActive = (ubInProgress + ubOpen) > 0;
-  if (ghActive && ubActive) return 'inflight';
+  // 5. Active: has open items OR recent closures in at least one source
+  if (totalOpen > 0 || anyRecentWork) return 'active';
 
-  // 4. Active: has open items in at least one source
-  if (totalActive > 0) return 'active';
-
-  // 5. Clear: nothing open
+  // 6. Clear: nothing open, no recent activity
   return 'clear';
 }
 

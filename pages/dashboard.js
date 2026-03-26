@@ -24,13 +24,34 @@ function DigiteamLogo({ size = 36 }) {
   );
 }
 
+// ── Source logos ──────────────────────────────────────────────────────────────
+function GitHubIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, opacity: 0.7 }}>
+      <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  );
+}
+
+function UserbackIcon({ size = 18 }) {
+  return (
+    <img
+      src="https://images.g2crowd.com/uploads/product/image/0e598018a26f1c8abd497d33903afb39/userback.png"
+      alt="Userback"
+      width={size}
+      height={size}
+      style={{ flexShrink: 0, borderRadius: '3px', opacity: 0.8 }}
+    />
+  );
+}
+
 // ── Health config ────────────────────────────────────────────────────────────
 const HEALTH_CONFIG = {
-  blocked:  { bg: 'var(--status-blocked-bg)',  text: 'var(--status-blocked-text)',  dot: 'var(--status-blocked-dot)',  label: 'Blocked',   desc: 'Has GitHub issues labelled "blocked" or Userback tickets on hold' },
-  stale:    { bg: 'var(--status-stale-bg)',    text: 'var(--status-stale-text)',    dot: 'var(--status-stale-dot)',    label: 'Stale',     desc: 'Open items exist but nothing has been updated in the last 30 days' },
-  inflight: { bg: 'var(--status-inflight-bg)', text: 'var(--status-inflight-text)', dot: 'var(--status-inflight-dot)', label: 'In Flight', desc: 'Active work happening across both GitHub and Userback simultaneously' },
-  active:   { bg: 'var(--status-active-bg)',   text: 'var(--status-active-text)',   dot: 'var(--status-active-dot)',   label: 'Active',    desc: 'Has recently updated open items in at least one source' },
-  clear:    { bg: 'var(--status-clear-bg)',    text: 'var(--status-clear-text)',    dot: 'var(--status-clear-dot)',    label: 'Clear',     desc: 'No open items in either GitHub or Userback' },
+  blocked:  { bg: 'var(--status-blocked-bg)',  text: 'var(--status-blocked-text)',  dot: 'var(--status-blocked-dot)',  label: 'Blocked',   desc: 'GitHub issues labelled "blocked" or Userback tickets on hold' },
+  stale:    { bg: 'var(--status-stale-bg)',    text: 'var(--status-stale-text)',    dot: 'var(--status-stale-dot)',    label: 'Stale',     desc: 'Open items exist but no recent work — nothing updated in 14+ days and no items closed or resolved in the last 7 days' },
+  inflight: { bg: 'var(--status-inflight-bg)', text: 'var(--status-inflight-text)', dot: 'var(--status-inflight-dot)', label: 'In Flight', desc: 'Recent work happening across both GitHub and Userback simultaneously (including recent closures/resolutions)' },
+  active:   { bg: 'var(--status-active-bg)',   text: 'var(--status-active-text)',   dot: 'var(--status-active-dot)',   label: 'Active',    desc: 'Has open items or recent closures/resolutions in at least one source' },
+  clear:    { bg: 'var(--status-clear-bg)',    text: 'var(--status-clear-text)',    dot: 'var(--status-clear-dot)',    label: 'Clear',     desc: 'No open items and no recent activity in either GitHub or Userback' },
 };
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -224,6 +245,7 @@ function DataColumn({ title, icon, data, source, emptyMsg }) {
         borderRadius: '10px', padding: '20px',
       }}>
         <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
           fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
           color: 'var(--muted)', fontWeight: '600', marginBottom: '10px',
         }}>
@@ -244,6 +266,7 @@ function DataColumn({ title, icon, data, source, emptyMsg }) {
         borderRadius: '10px', padding: '20px',
       }}>
         <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
           fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
           color: 'var(--muted)', fontWeight: '600', marginBottom: '10px',
         }}>
@@ -271,6 +294,7 @@ function DataColumn({ title, icon, data, source, emptyMsg }) {
         marginBottom: '14px',
       }}>
         <span style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
           fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
           color: 'var(--muted)', fontWeight: '600',
         }}>
@@ -387,14 +411,14 @@ function ProjectCard({ project }) {
         }}>
           <DataColumn
             title="GitHub Issues"
-            icon="⌥"
+            icon={<GitHubIcon size={16} />}
             data={project.github}
             source="github"
             emptyMsg="No GitHub repo configured"
           />
           <DataColumn
             title="Userback"
-            icon="◈"
+            icon={<UserbackIcon size={16} />}
             data={project.userback}
             source="userback"
             emptyMsg="No Userback project configured"
