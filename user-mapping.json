@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "displayName": "Chris Howell",
+    "githubLogin": "ChrisDotNet",
+    "userbackUserId": "38147"
+  },
+  {
+    "displayName": "Mike Badgley",
+    "githubLogin": "badg0003",
+    "userbackUserId": "38525"
+  },
+  {
+    "displayName": "Maryau Jeune",
+    "githubLogin": "m-jeune",
+    "userbackUserId": "38529"
+  },
+  {
+    "displayName": "Kris Blazejewicz",
+    "githubLogin": "kblazejewicz",
+    "userbackUserId": "38527"
+  }
+]
