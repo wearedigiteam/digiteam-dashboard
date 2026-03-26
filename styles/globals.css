@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Syne+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -7,29 +7,58 @@
 }
 
 :root {
-  --bg:        #0a0a0a;
-  --surface:   #131313;
-  --surface2:  #1a1a1a;
-  --border:    #242424;
-  --border2:   #2e2e2e;
-  --orange:    #E03C1A;
-  --amber:     #F5A400;
-  --text:      #efefef;
-  --muted:     #555;
-  --muted2:    #777;
-  --red:       #cc2200;
-  --blue:      #2f6fef;
-  --green:     #1a8a3a;
-  --font:      'Syne', sans-serif;
-  --mono:      'Syne Mono', monospace;
+  /* Digiteam brand */
+  --dt-orange:   #f05a27;
+  --dt-gold:     #f7ad39;
+  --dt-navy:     #1a1a2e;
+
+  /* Theme A: Warm Professional */
+  --bg:          #faf8f5;
+  --surface:     #ffffff;
+  --surface2:    #f5f2ed;
+  --border:      #e8e4de;
+  --border2:     #d9d4cb;
+  --orange:      #f05a27;
+  --amber:       #f7ad39;
+  --text:        #1a1a2e;
+  --text2:       #2d2d3f;
+  --muted:       #7a7a8a;
+  --muted2:      #9a9aa6;
+  --red:         #c02020;
+  --blue:        #2563eb;
+  --green:       #0f8a4f;
+  --font:        'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:        'DM Mono', 'SF Mono', 'Consolas', monospace;
+
+  /* Status colours */
+  --status-active-bg:    #e1f5ee;
+  --status-active-text:  #0f6e56;
+  --status-active-dot:   #1d9e75;
+  --status-inflight-bg:  #e6f1fb;
+  --status-inflight-text:#185fa5;
+  --status-inflight-dot: #378add;
+  --status-blocked-bg:   #fcebeb;
+  --status-blocked-text: #a32d2d;
+  --status-blocked-dot:  #e24b4a;
+  --status-stale-bg:     #f1efe8;
+  --status-stale-text:   #5f5e5a;
+  --status-stale-dot:    #888780;
+  --status-clear-bg:     #f5f2ed;
+  --status-clear-text:   #9a9aa6;
+  --status-clear-dot:    #c0c0c0;
+
+  /* Utilisation bar colours */
+  --util-ok:     #1d9e75;
+  --util-warn:   #f7ad39;
+  --util-over:   #e24b4a;
 }
 
 html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
@@ -38,6 +67,10 @@ a { color: inherit; text-decoration: none; }
 
 button {
   cursor: pointer;
+  font-family: var(--font);
+}
+
+input, select, textarea {
   font-family: var(--font);
 }
 

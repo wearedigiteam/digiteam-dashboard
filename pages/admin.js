@@ -11,73 +11,54 @@ export async function getServerSideProps({ req }) {
   return { props: {} };
 }
 
-// ── Pill ──────────────────────────────────────────────────────────────────────
-function Pill({ children, color = 'var(--muted2)', onClick, active }) {
+function DigiteamLogo({ size = 32 }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        background: active ? color : 'var(--surface2)',
-        color: active ? '#fff' : 'var(--muted2)',
-        border: `1px solid ${active ? color : 'var(--border2)'}`,
-        borderRadius: '3px',
-        fontFamily: 'var(--mono)',
-        fontSize: '11px',
-        padding: '3px 10px',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'all 0.1s',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {children}
-    </button>
+    <svg width={size} height={size * 122 / 140} viewBox="0 0 140 122" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="19.16 38.15 0 57.31 19.16 57.31 38.32 57.31 38.32 38.15" fill="#f7ad39"/>
+      <path d="M114.19,38.5c0-.12-.11-.23-.16-.35H57.48V57.31h60.46A56.45,56.45,0,0,0,114.19,38.5Z" fill="#f7ad39"/>
+      <path d="M140.77,57.31H117.94c0,1.2.08,2.42.08,3.66q0,13.25-3.83,22.57a28.21,28.21,0,0,1-12.72,14.28q-8.88,5-24.21,5H57.48L76.65,122H78.3q21.44,0,35.28-7.58a47.74,47.74,0,0,0,20.56-21.25q6.71-13.68,6.71-32.15C140.85,59.73,140.81,58.52,140.77,57.31Z" fill="#f05a27"/>
+      <path d="M134.14,28.83A47.74,47.74,0,0,0,113.58,7.58Q101.4.9,83.34.11C81.7,0,80,0,78.3,0H57.4l-19,19H77.26q13.06,0,21.45,3.68c1,.43,1.89.87,2.76,1.37A28.62,28.62,0,0,1,114,38.15h23.71A61.22,61.22,0,0,0,134.14,28.83Z" fill="#f05a27"/>
+      <polygon points="38.32 57.31 38.32 77.33 38.32 81.49 38.32 83.63 57.48 102.79 57.48 58.17 57.48 57.31" fill="#f7ad39"/>
+    </svg>
   );
 }
 
-// ── Project row ───────────────────────────────────────────────────────────────
 function ProjectRow({ project, githubRepos, userbackProjects, onChange, onRemove }) {
+  const inputStyle = {
+    background: 'var(--surface2)',
+    border: '1px solid var(--border2)',
+    borderRadius: '8px',
+    color: 'var(--text)',
+    fontSize: '15px',
+    padding: '10px 12px',
+    width: '100%',
+    outline: 'none',
+  };
+
   return (
     <div style={{
       display: 'grid',
       gridTemplateColumns: '1fr 1fr 1fr auto',
-      gap: '10px',
+      gap: '12px',
       alignItems: 'center',
-      padding: '10px 12px',
+      padding: '14px 16px',
       background: 'var(--surface)',
       border: '1px solid var(--border)',
-      borderRadius: '3px',
-      marginBottom: '8px',
+      borderRadius: '10px',
+      marginBottom: '10px',
     }}>
-      {/* Display name */}
       <input
         value={project.name}
         onChange={e => onChange({ ...project, name: e.target.value })}
         placeholder="Project display name"
-        style={{
-          background: 'var(--bg)',
-          border: '1px solid var(--border2)',
-          borderRadius: '3px',
-          color: 'var(--text)',
-          fontFamily: 'var(--mono)',
-          fontSize: '12px',
-          padding: '6px 10px',
-          width: '100%',
-        }}
+        style={inputStyle}
       />
-
-      {/* GitHub repo select */}
       <select
         value={project.githubRepo || ''}
         onChange={e => onChange({ ...project, githubRepo: e.target.value || null })}
         style={{
-          background: 'var(--bg)',
-          border: '1px solid var(--border2)',
-          borderRadius: '3px',
+          ...inputStyle,
           color: project.githubRepo ? 'var(--text)' : 'var(--muted)',
-          fontFamily: 'var(--mono)',
-          fontSize: '12px',
-          padding: '6px 10px',
-          width: '100%',
         }}
       >
         <option value="">— No GitHub repo —</option>
@@ -85,20 +66,12 @@ function ProjectRow({ project, githubRepos, userbackProjects, onChange, onRemove
           <option key={r.name} value={r.name}>{r.name}</option>
         ))}
       </select>
-
-      {/* Userback project select */}
       <select
         value={project.userbackId || ''}
         onChange={e => onChange({ ...project, userbackId: e.target.value || null })}
         style={{
-          background: 'var(--bg)',
-          border: '1px solid var(--border2)',
-          borderRadius: '3px',
+          ...inputStyle,
           color: project.userbackId ? 'var(--text)' : 'var(--muted)',
-          fontFamily: 'var(--mono)',
-          fontSize: '12px',
-          padding: '6px 10px',
-          width: '100%',
         }}
       >
         <option value="">— No Userback project —</option>
@@ -106,19 +79,15 @@ function ProjectRow({ project, githubRepos, userbackProjects, onChange, onRemove
           <option key={p.id} value={p.id}>{p.name}</option>
         ))}
       </select>
-
-      {/* Remove button */}
       <button
         onClick={onRemove}
         style={{
-          background: 'none',
-          border: '1px solid var(--border2)',
-          borderRadius: '3px',
-          color: 'var(--muted)',
-          fontFamily: 'var(--mono)',
-          fontSize: '14px',
-          padding: '4px 10px',
-          cursor: 'pointer',
+          background: 'var(--status-blocked-bg)',
+          border: '1px solid #e24b4a33',
+          borderRadius: '8px',
+          color: 'var(--status-blocked-text)',
+          fontSize: '16px',
+          padding: '8px 12px',
           lineHeight: 1,
         }}
         title="Remove project"
@@ -129,18 +98,16 @@ function ProjectRow({ project, githubRepos, userbackProjects, onChange, onRemove
   );
 }
 
-// ── Admin page ────────────────────────────────────────────────────────────────
 export default function Admin() {
   const router = useRouter();
-
-  const [mapping,           setMapping]           = useState([]);
-  const [githubRepos,       setGithubRepos]       = useState([]);
-  const [userbackProjects,  setUserbackProjects]  = useState([]);
-  const [loading,           setLoading]           = useState(true);
-  const [saving,            setSaving]            = useState(false);
-  const [saved,             setSaved]             = useState(false);
-  const [error,             setError]             = useState(null);
-  const [repoSearch,        setRepoSearch]        = useState('');
+  const [mapping, setMapping] = useState([]);
+  const [githubRepos, setGithubRepos] = useState([]);
+  const [userbackProjects, setUserbackProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+  const [repoSearch, setRepoSearch] = useState('');
 
   useEffect(() => {
     async function loadAll() {
@@ -152,18 +119,12 @@ export default function Admin() {
           fetch('/api/admin/repos'),
           fetch('/api/userback-projects'),
         ]);
-
         if (mappingRes.status === 401 || reposRes.status === 401) {
-          router.push('/');
-          return;
+          router.push('/'); return;
         }
-
         const [mappingData, reposData, ubData] = await Promise.all([
-          mappingRes.json(),
-          reposRes.json(),
-          ubRes.json(),
+          mappingRes.json(), reposRes.json(), ubRes.json(),
         ]);
-
         setMapping(mappingData.mapping || []);
         setGithubRepos(reposData.repos || []);
         setUserbackProjects(ubData.projects || []);
@@ -189,9 +150,7 @@ export default function Admin() {
   }
 
   async function saveMapping() {
-    setSaving(true);
-    setError(null);
-    setSaved(false);
+    setSaving(true); setError(null); setSaved(false);
     try {
       const res = await fetch('/api/admin/mapping', {
         method: 'POST',
@@ -222,51 +181,51 @@ export default function Admin() {
         <meta name="robots" content="noindex,nofollow" />
       </Head>
 
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        backgroundImage: `
-          linear-gradient(rgba(224,60,26,0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(224,60,26,0.02) 1px, transparent 1px)
-        `,
-        backgroundSize: '48px 48px',
-        pointerEvents: 'none',
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
+      <div style={{ minHeight: '100vh' }}>
         {/* Top bar */}
         <header style={{
           position: 'sticky', top: 0, zIndex: 10,
-          background: 'rgba(10,10,10,0.95)',
-          backdropFilter: 'blur(8px)',
-          borderBottom: '1px solid var(--border)',
+          background: 'var(--dt-navy)',
           padding: '0 24px',
-          display: 'flex', alignItems: 'center', gap: '16px', height: '52px',
+          display: 'flex', alignItems: 'center', gap: '16px', height: '60px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '20px', height: '20px',
-              background: 'var(--orange)',
-              clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-            }} />
-            <span style={{ fontSize: '14px', fontWeight: '800' }}>digiteam</span>
-            <span style={{
-              fontSize: '9px', color: 'var(--muted)', letterSpacing: '2px',
-              textTransform: 'uppercase', fontFamily: 'var(--mono)',
-              paddingLeft: '8px', borderLeft: '1px solid var(--border)',
-            }}>
-              Admin
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <DigiteamLogo size={28} />
+            <span style={{ fontSize: '18px', fontWeight: '600', color: '#fff' }}>
+              digiteam
             </span>
           </div>
+
+          <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
+            <button
+              onClick={() => router.push('/dashboard')}
+              style={{
+                background: 'transparent', color: 'rgba(255,255,255,0.5)',
+                border: 'none', borderRadius: '6px',
+                fontSize: '14px', fontWeight: '500', padding: '6px 14px',
+              }}
+            >
+              Projects
+            </button>
+            <button
+              style={{
+                background: 'rgba(247,173,57,0.15)', color: '#f7ad39',
+                border: 'none', borderRadius: '6px',
+                fontSize: '14px', fontWeight: '500', padding: '6px 14px',
+              }}
+            >
+              Admin
+            </button>
+          </nav>
 
           <div style={{ flex: 1 }} />
 
           <button
             onClick={() => router.push('/dashboard')}
             style={{
-              background: 'none', border: '1px solid var(--border2)',
-              color: 'var(--muted2)', borderRadius: '3px',
-              fontFamily: 'var(--mono)', fontSize: '10px',
-              letterSpacing: '0.5px', padding: '4px 12px', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+              color: '#fff', borderRadius: '6px',
+              fontSize: '13px', fontWeight: '500', padding: '6px 14px',
             }}
           >
             ← Dashboard
@@ -275,31 +234,27 @@ export default function Admin() {
 
         <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
 
-          {/* Page title */}
           <div style={{ marginBottom: '32px' }}>
-            <h1 style={{
-              fontSize: '24px', fontWeight: '800', color: 'var(--text)',
-              marginBottom: '6px',
-            }}>
-              Project Mapping
+            <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
+              Project mapping
             </h1>
-            <p style={{
-              fontSize: '13px', color: 'var(--muted)',
-              fontFamily: 'var(--mono)', lineHeight: 1.6,
-            }}>
+            <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6 }}>
               Link GitHub repos to their Userback counterparts. Changes are saved to{' '}
-              <code style={{ color: 'var(--orange)' }}>mapping.json</code> in your repo via the GitHub API.
+              <code style={{
+                color: 'var(--orange)', background: 'var(--surface2)',
+                padding: '2px 6px', borderRadius: '4px', fontSize: '14px',
+              }}>mapping.json</code> in your repo via the GitHub API.
             </p>
           </div>
 
           {loading && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: '12px',
-              color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '12px',
+              color: 'var(--muted)', fontSize: '15px',
             }}>
               <div style={{
-                width: '16px', height: '16px',
-                border: '2px solid var(--border2)',
+                width: '18px', height: '18px',
+                border: '2px solid var(--border)',
                 borderTopColor: 'var(--orange)',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
@@ -311,10 +266,9 @@ export default function Admin() {
 
           {error && (
             <div style={{
-              background: '#cc220011', border: '1px solid #cc220033',
-              borderRadius: '4px', padding: '12px 16px',
-              color: 'var(--red)', fontFamily: 'var(--mono)', fontSize: '12px',
-              marginBottom: '20px',
+              background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33',
+              borderRadius: '10px', padding: '14px 18px',
+              color: 'var(--red)', fontSize: '14px', marginBottom: '20px',
             }}>
               {error}
             </div>
@@ -326,55 +280,50 @@ export default function Admin() {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr auto',
-                gap: '10px',
-                padding: '0 12px 8px',
-                marginBottom: '4px',
+                gap: '12px', padding: '0 16px 10px',
               }}>
-                {['Display Name', 'GitHub Repo', 'Userback Project', ''].map((h, i) => (
+                {['Display name', 'GitHub repo', 'Userback project', ''].map((h, i) => (
                   <div key={i} style={{
-                    fontSize: '10px', color: 'var(--muted)',
-                    fontFamily: 'var(--mono)', letterSpacing: '1.5px',
-                    textTransform: 'uppercase',
+                    fontSize: '13px', color: 'var(--muted)',
+                    fontWeight: '600', textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
                   }}>
                     {h}
                   </div>
                 ))}
               </div>
 
-              {/* Repo search — shown above the GitHub column */}
-              <div style={{ marginBottom: '12px' }}>
+              {/* Repo filter */}
+              <div style={{ marginBottom: '14px' }}>
                 <input
                   value={repoSearch}
                   onChange={e => setRepoSearch(e.target.value)}
                   placeholder="Filter GitHub repos..."
                   style={{
-                    width: '300px',
+                    width: '320px',
                     background: 'var(--surface)',
                     border: '1px solid var(--border2)',
-                    borderRadius: '3px',
-                    color: 'var(--text)',
-                    fontFamily: 'var(--mono)',
-                    fontSize: '11px',
-                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    color: 'var(--text)', fontSize: '14px',
+                    padding: '8px 12px', outline: 'none',
                   }}
                 />
                 <span style={{
-                  marginLeft: '10px', fontSize: '11px',
-                  color: 'var(--muted)', fontFamily: 'var(--mono)',
+                  marginLeft: '12px', fontSize: '13px',
+                  color: 'var(--muted)',
                 }}>
                   {filteredRepos.length} of {githubRepos.length} repos
                 </span>
               </div>
 
-              {/* Project rows */}
               {mapping.length === 0 && (
                 <div style={{
                   textAlign: 'center', padding: '40px',
-                  color: 'var(--muted)', fontFamily: 'var(--mono)',
-                  fontSize: '12px', border: '1px dashed var(--border2)',
-                  borderRadius: '4px', marginBottom: '16px',
+                  color: 'var(--muted)', fontSize: '15px',
+                  border: '1px dashed var(--border2)',
+                  borderRadius: '10px', marginBottom: '16px',
                 }}>
-                  No projects configured yet. Click "Add Project" to get started.
+                  No projects configured yet. Click "Add project" to get started.
                 </div>
               )}
 
@@ -391,7 +340,7 @@ export default function Admin() {
 
               {/* Actions */}
               <div style={{
-                display: 'flex', gap: '10px', alignItems: 'center',
+                display: 'flex', gap: '12px', alignItems: 'center',
                 marginTop: '20px', paddingTop: '20px',
                 borderTop: '1px solid var(--border)',
               }}>
@@ -400,14 +349,12 @@ export default function Admin() {
                   style={{
                     background: 'var(--surface)',
                     border: '1px solid var(--border2)',
-                    color: 'var(--text)',
-                    borderRadius: '3px',
-                    fontFamily: 'var(--mono)', fontSize: '11px',
-                    letterSpacing: '0.5px', textTransform: 'uppercase',
-                    padding: '8px 16px', cursor: 'pointer',
+                    color: 'var(--text)', borderRadius: '8px',
+                    fontSize: '14px', fontWeight: '500',
+                    padding: '10px 18px',
                   }}
                 >
-                  + Add Project
+                  + Add project
                 </button>
 
                 <button
@@ -415,23 +362,20 @@ export default function Admin() {
                   disabled={saving}
                   style={{
                     background: saving ? 'var(--border2)' : 'var(--orange)',
-                    border: 'none',
-                    color: '#fff',
-                    borderRadius: '3px',
-                    fontFamily: 'var(--mono)', fontSize: '11px',
-                    letterSpacing: '0.5px', textTransform: 'uppercase',
-                    padding: '8px 20px',
+                    border: 'none', color: '#fff',
+                    borderRadius: '8px', fontSize: '14px',
+                    fontWeight: '600', padding: '10px 22px',
                     cursor: saving ? 'not-allowed' : 'pointer',
                     transition: 'background 0.15s',
                   }}
                 >
-                  {saving ? 'Saving...' : 'Save Mapping'}
+                  {saving ? 'Saving...' : 'Save mapping'}
                 </button>
 
                 {saved && (
                   <span style={{
-                    fontSize: '11px', color: 'var(--green)',
-                    fontFamily: 'var(--mono)',
+                    fontSize: '14px', color: 'var(--green)',
+                    fontWeight: '500',
                   }}>
                     ✓ Saved to repo
                   </span>
@@ -440,38 +384,30 @@ export default function Admin() {
                 <div style={{ flex: 1 }} />
 
                 <span style={{
-                  fontSize: '10px', color: 'var(--muted)',
-                  fontFamily: 'var(--mono)',
+                  fontSize: '13px', color: 'var(--muted)',
                 }}>
                   {mapping.length} project{mapping.length !== 1 ? 's' : ''} configured
                 </span>
               </div>
 
-              {/* Userback project reference */}
+              {/* Userback reference list */}
               <div style={{ marginTop: '40px' }}>
                 <div style={{
-                  fontSize: '10px', color: 'var(--muted)',
-                  fontFamily: 'var(--mono)', letterSpacing: '1.5px',
-                  textTransform: 'uppercase', marginBottom: '12px',
+                  fontSize: '13px', color: 'var(--muted)', fontWeight: '600',
+                  textTransform: 'uppercase', letterSpacing: '0.5px',
+                  marginBottom: '12px',
                 }}>
-                  Userback Projects ({userbackProjects.length})
+                  Userback projects ({userbackProjects.length})
                 </div>
-                <div style={{
-                  display: 'flex', flexWrap: 'wrap', gap: '6px',
-                }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {userbackProjects.map(p => (
-                    <div
-                      key={p.id}
-                      style={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '3px',
-                        padding: '4px 10px',
-                        fontFamily: 'var(--mono)', fontSize: '11px',
-                        color: 'var(--muted2)',
-                      }}
-                    >
-                      <span style={{ color: 'var(--orange)' }}>{p.id}</span>
+                    <div key={p.id} style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px', padding: '6px 12px',
+                      fontSize: '13px', color: 'var(--muted2)',
+                    }}>
+                      <span style={{ color: 'var(--orange)', fontWeight: '600' }}>{p.id}</span>
                       {' '}{p.name}
                     </div>
                   ))}

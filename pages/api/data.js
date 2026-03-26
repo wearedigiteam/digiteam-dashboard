@@ -7,6 +7,9 @@ const REPO   = 'digiteam-dashboard';
 const BRANCH = 'main';
 const PATH   = 'mapping.json';
 
+// ── Status thresholds (days) ────────────────────────────────────────────────
+const STALE_DAYS = 30;
+
 async function getMapping() {
   try {
     const res = await fetch(
@@ -24,6 +27,60 @@ async function getMapping() {
   } catch {
     return [];
   }
+}
+
+// ── Auto-compute project health from live data ──────────────────────────────
+//
+// Status priority (highest wins):
+//   BLOCKED   — GitHub has issues labelled "blocked" OR Userback has tickets "on hold"
+//   STALE     — Has open items but nothing updated in the last 30 days across both sources
+//   IN FLIGHT — Has activity across BOTH GitHub AND Userback (multi-front work)
+//   ACTIVE    — Has open items in at least one source with recent updates
+//   CLEAR     — No open items in either source
+//
+function computeHealth({ github, userback }) {
+  const ghBlocked    = github?.blocked?.length    || 0;
+  const ghStale      = github?.stale?.length      || 0;
+  const ghInProgress = github?.inProgress?.length  || 0;
+  const ghOpen       = github?.open?.length        || 0;
+  const ghTotal      = ghBlocked + ghStale + ghInProgress + ghOpen;
+
+  const ubOpen       = userback?.open?.length       || 0;
+  const ubInProgress = userback?.inProgress?.length  || 0;
+  const ubOnHold     = userback?.onHold?.length      || 0;
+  const ubTotal      = ubOpen + ubInProgress + ubOnHold;
+
+  const totalActive  = ghTotal + ubTotal;
+
+  // 1. Blocked: any blocked GitHub issues or on-hold Userback tickets
+  if (ghBlocked > 0 || ubOnHold > 0) return 'blocked';
+
+  // 2. Stale: has open items but ALL are stale (no recent updates)
+  if (totalActive > 0) {
+    const ghAllStale = ghTotal > 0 && ghTotal === ghStale;
+    const ubAllStale = ubTotal > 0 && ubTotal === ubOpen; // open but not in-progress = likely stale
+    const hasGH = ghTotal > 0;
+    const hasUB = ubTotal > 0;
+
+    // Check if issue last-update dates are all beyond stale threshold
+    const ghHasRecent = (ghInProgress + ghOpen) > 0;
+    const ubHasRecent = ubInProgress > 0;
+
+    if (hasGH && !ghHasRecent && hasUB && !ubHasRecent) return 'stale';
+    if (hasGH && !hasUB && ghAllStale) return 'stale';
+    if (hasUB && !hasGH && ubAllStale && !ubHasRecent) return 'stale';
+  }
+
+  // 3. In Flight: active on BOTH GitHub and Userback simultaneously
+  const ghActive = (ghInProgress + ghOpen) > 0;
+  const ubActive = (ubInProgress + ubOpen) > 0;
+  if (ghActive && ubActive) return 'inflight';
+
+  // 4. Active: has open items in at least one source
+  if (totalActive > 0) return 'active';
+
+  // 5. Clear: nothing open
+  return 'clear';
 }
 
 export default async function handler(req, res) {
@@ -50,22 +107,24 @@ export default async function handler(req, res) {
           project.userbackId ? fetchProjectTasks(String(project.userbackId)) : null,
         ]);
 
-        const ghBlocked    = github?.blocked?.length || 0;
-        const ghStale      = github?.stale?.length || 0;
-        const ghInProgress = github?.inProgress?.length || 0;
-        const ghOpen       = github?.open?.length || 0;
-        const ubOpen       = userback?.open?.length || 0;
-        const ubInProgress = userback?.inProgress?.length || 0;
-        const ubOnHold     = userback?.onHold?.length || 0;
+        const ghTotal = github
+          ? (github.blocked?.length || 0) + (github.inProgress?.length || 0) +
+            (github.stale?.length || 0) + (github.open?.length || 0)
+          : 0;
+        const ubTotal = userback
+          ? (userback.open?.length || 0) + (userback.inProgress?.length || 0) +
+            (userback.onHold?.length || 0)
+          : 0;
 
-        const totalActive = ghBlocked + ghInProgress + ghStale + ghOpen +
-                            ubOpen + ubInProgress + ubOnHold;
-        const health = ghBlocked > 0   ? 'blocked'
-                     : ghStale > 0     ? 'stale'
-                     : totalActive > 0 ? 'active'
-                     : 'clear';
+        const health = computeHealth({ github, userback });
 
-        return { name: project.name, health, totalActive, github, userback };
+        return {
+          name: project.name,
+          health,
+          totalActive: ghTotal + ubTotal,
+          github,
+          userback,
+        };
       })
     );
 

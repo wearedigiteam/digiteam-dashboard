@@ -11,41 +11,127 @@ export async function getServerSideProps({ req }) {
   return { props: {} };
 }
 
-// ── Health indicator ────────────────────────────────────────────────────────
-const HEALTH_CONFIG = {
-  blocked: { color: '#cc2200', label: 'BLOCKED',    dot: '#ff4422' },
-  stale:   { color: '#886600', label: 'STALE',      dot: '#F5A400' },
-  active:  { color: '#1a6e1a', label: 'IN FLIGHT',  dot: '#22cc44' },
-  clear:   { color: '#333',    label: 'CLEAR',       dot: '#444'    },
-};
-
-function HealthDot({ health }) {
-  const cfg = HEALTH_CONFIG[health] || HEALTH_CONFIG.clear;
+// ── Digiteam logo SVG ────────────────────────────────────────────────────────
+function DigiteamLogo({ size = 36 }) {
   return (
-    <span style={{
-      display: 'inline-block',
-      width: '8px', height: '8px',
-      borderRadius: '50%',
-      background: cfg.dot,
-      boxShadow: health === 'blocked' ? `0 0 6px ${cfg.dot}` :
-                 health === 'active'  ? `0 0 4px ${cfg.dot}` : 'none',
-      flexShrink: 0,
-    }} />
+    <svg width={size} height={size * 122 / 140} viewBox="0 0 140 122" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="19.16 38.15 0 57.31 19.16 57.31 38.32 57.31 38.32 38.15" fill="#f7ad39"/>
+      <path d="M114.19,38.5c0-.12-.11-.23-.16-.35H57.48V57.31h60.46A56.45,56.45,0,0,0,114.19,38.5Z" fill="#f7ad39"/>
+      <path d="M140.77,57.31H117.94c0,1.2.08,2.42.08,3.66q0,13.25-3.83,22.57a28.21,28.21,0,0,1-12.72,14.28q-8.88,5-24.21,5H57.48L76.65,122H78.3q21.44,0,35.28-7.58a47.74,47.74,0,0,0,20.56-21.25q6.71-13.68,6.71-32.15C140.85,59.73,140.81,58.52,140.77,57.31Z" fill="#f05a27"/>
+      <path d="M134.14,28.83A47.74,47.74,0,0,0,113.58,7.58Q101.4.9,83.34.11C81.7,0,80,0,78.3,0H57.4l-19,19H77.26q13.06,0,21.45,3.68c1,.43,1.89.87,2.76,1.37A28.62,28.62,0,0,1,114,38.15h23.71A61.22,61.22,0,0,0,134.14,28.83Z" fill="#f05a27"/>
+      <polygon points="38.32 57.31 38.32 77.33 38.32 81.49 38.32 83.63 57.48 102.79 57.48 58.17 57.48 57.31" fill="#f7ad39"/>
+    </svg>
   );
 }
 
-// ── Issue / Task row ────────────────────────────────────────────────────────
+// ── Health config ────────────────────────────────────────────────────────────
+const HEALTH_CONFIG = {
+  blocked:  { bg: 'var(--status-blocked-bg)',  text: 'var(--status-blocked-text)',  dot: 'var(--status-blocked-dot)',  label: 'Blocked',   desc: 'Has GitHub issues labelled "blocked" or Userback tickets on hold' },
+  stale:    { bg: 'var(--status-stale-bg)',    text: 'var(--status-stale-text)',    dot: 'var(--status-stale-dot)',    label: 'Stale',     desc: 'Open items exist but nothing has been updated in the last 30 days' },
+  inflight: { bg: 'var(--status-inflight-bg)', text: 'var(--status-inflight-text)', dot: 'var(--status-inflight-dot)', label: 'In Flight', desc: 'Active work happening across both GitHub and Userback simultaneously' },
+  active:   { bg: 'var(--status-active-bg)',   text: 'var(--status-active-text)',   dot: 'var(--status-active-dot)',   label: 'Active',    desc: 'Has recently updated open items in at least one source' },
+  clear:    { bg: 'var(--status-clear-bg)',    text: 'var(--status-clear-text)',    dot: 'var(--status-clear-dot)',    label: 'Clear',     desc: 'No open items in either GitHub or Userback' },
+};
+
+// ── Status badge ─────────────────────────────────────────────────────────────
+function StatusBadge({ health }) {
+  const cfg = HEALTH_CONFIG[health] || HEALTH_CONFIG.clear;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '7px',
+      fontSize: '14px', fontWeight: '600',
+      padding: '5px 14px', borderRadius: '20px',
+      background: cfg.bg, color: cfg.text,
+      whiteSpace: 'nowrap',
+    }}>
+      <span style={{
+        width: '9px', height: '9px', borderRadius: '50%',
+        background: cfg.dot, flexShrink: 0,
+      }} />
+      {cfg.label}
+    </span>
+  );
+}
+
+// ── Status legend (expandable ?) ─────────────────────────────────────────────
+function StatusLegend() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: open ? 'var(--orange)' : 'var(--surface)',
+          color: open ? '#fff' : 'var(--muted)',
+          border: `1px solid ${open ? 'var(--orange)' : 'var(--border2)'}`,
+          borderRadius: '50%', width: '26px', height: '26px',
+          fontSize: '14px', fontWeight: '600',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', transition: 'all 0.15s',
+        }}
+        title="How are statuses determined?"
+      >
+        ?
+      </button>
+      {open && (
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+          />
+          <div style={{
+            position: 'absolute', top: '34px', left: '50%', transform: 'translateX(-50%)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '10px', padding: '20px', width: '380px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', zIndex: 100,
+          }}>
+            <div style={{
+              fontSize: '15px', fontWeight: '600', color: 'var(--text)',
+              marginBottom: '14px',
+            }}>
+              How statuses are computed
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+              Statuses are determined automatically from GitHub issues and Userback ticket data. Priority order (highest wins):
+            </div>
+            {['blocked', 'stale', 'inflight', 'active', 'clear'].map(key => {
+              const cfg = HEALTH_CONFIG[key];
+              return (
+                <div key={key} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  padding: '8px 0',
+                  borderBottom: key !== 'clear' ? '1px solid var(--border)' : 'none',
+                }}>
+                  <span style={{
+                    width: '10px', height: '10px', borderRadius: '50%',
+                    background: cfg.dot, flexShrink: 0, marginTop: '4px',
+                  }} />
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: cfg.text }}>{cfg.label}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: 1.4 }}>{cfg.desc}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+// ── Issue / Task row ─────────────────────────────────────────────────────────
 function ItemRow({ item, source }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: '8px',
-      padding: '7px 0',
+      display: 'flex', alignItems: 'flex-start', gap: '10px',
+      padding: '9px 0',
       borderBottom: '1px solid var(--border)',
     }}>
       <span style={{
-        fontFamily: 'var(--mono)', fontSize: '11px',
+        fontFamily: 'var(--mono)', fontSize: '13px',
         color: 'var(--muted2)', flexShrink: 0, paddingTop: '1px',
-        minWidth: '28px',
+        minWidth: '30px',
       }}>
         {source === 'github' ? `#${item.id}` : '●'}
       </span>
@@ -55,7 +141,7 @@ function ItemRow({ item, source }) {
           target="_blank"
           rel="noreferrer"
           style={{
-            fontSize: '12px', color: 'var(--text)',
+            fontSize: '15px', color: 'var(--text)',
             display: 'block', lineHeight: '1.4',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}
@@ -64,15 +150,19 @@ function ItemRow({ item, source }) {
           {item.title}
         </a>
         {(item.assignees?.length > 0 || item.assignee) && (
-          <span style={{ fontSize: '10px', color: 'var(--muted2)', fontFamily: 'var(--mono)' }}>
+          <span style={{ fontSize: '13px', color: 'var(--muted2)', fontFamily: 'var(--mono)' }}>
             {item.assignees?.join(', ') || item.assignee}
           </span>
         )}
       </div>
       {item.daysSince !== undefined && (
         <span style={{
-          fontSize: '10px', color: item.daysSince > 14 ? '#886600' : 'var(--muted)',
+          fontSize: '13px',
+          color: item.daysSince > 14 ? 'var(--status-stale-text)' : 'var(--muted)',
           fontFamily: 'var(--mono)', flexShrink: 0, paddingTop: '2px',
+          background: item.daysSince > 14 ? 'var(--status-stale-bg)' : 'transparent',
+          padding: item.daysSince > 14 ? '1px 8px' : '1px 0',
+          borderRadius: '4px',
         }}>
           {item.daysSince}d
         </span>
@@ -82,33 +172,34 @@ function ItemRow({ item, source }) {
 }
 
 // ── Section within a data column ─────────────────────────────────────────────
-function IssueSection({ title, items, color, source, defaultOpen = true }) {
+function IssueSection({ title, items, color, bgColor, source, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   if (!items || items.length === 0) return null;
   return (
-    <div style={{ marginBottom: '12px' }}>
+    <div style={{ marginBottom: '14px' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
+          display: 'flex', alignItems: 'center', gap: '8px',
           width: '100%', background: 'none', border: 'none',
-          padding: '0 0 5px 0', cursor: 'pointer',
-          borderBottom: `1px solid ${color}33`,
+          padding: '0 0 6px 0', cursor: 'pointer',
+          borderBottom: `2px solid ${color}`,
         }}
       >
         <span style={{
-          fontSize: '10px', fontWeight: '700', letterSpacing: '1.5px',
-          textTransform: 'uppercase', color, fontFamily: 'var(--mono)',
+          fontSize: '13px', fontWeight: '600', letterSpacing: '0.5px',
+          textTransform: 'uppercase', color,
         }}>
           {title}
         </span>
         <span style={{
-          fontSize: '10px', fontFamily: 'var(--mono)',
-          background: `${color}22`, color, padding: '1px 6px', borderRadius: '2px',
+          fontSize: '13px', fontFamily: 'var(--mono)',
+          background: bgColor || `${color}18`, color, padding: '2px 8px', borderRadius: '10px',
+          fontWeight: '600',
         }}>
           {items.length}
         </span>
-        <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--muted)' }}>
+        <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--muted)' }}>
           {open ? '▲' : '▼'}
         </span>
       </button>
@@ -129,18 +220,16 @@ function DataColumn({ title, icon, data, source, emptyMsg }) {
     return (
       <div style={{
         flex: 1, minWidth: 0,
-        background: 'var(--surface2)',
-        border: '1px solid var(--border)',
-        borderRadius: '3px',
-        padding: '16px',
+        background: 'var(--surface2)', border: '1px solid var(--border)',
+        borderRadius: '10px', padding: '20px',
       }}>
         <div style={{
-          fontSize: '10px', letterSpacing: '1.5px', textTransform: 'uppercase',
-          color: 'var(--muted)', fontFamily: 'var(--mono)', marginBottom: '8px',
+          fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
+          color: 'var(--muted)', fontWeight: '600', marginBottom: '10px',
         }}>
           {icon} {title}
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--muted)', fontStyle: 'italic' }}>
+        <div style={{ fontSize: '15px', color: 'var(--muted)', fontStyle: 'italic' }}>
           {emptyMsg || 'Not configured'}
         </div>
       </div>
@@ -151,18 +240,16 @@ function DataColumn({ title, icon, data, source, emptyMsg }) {
     return (
       <div style={{
         flex: 1, minWidth: 0,
-        background: 'var(--surface2)',
-        border: '1px solid #cc220033',
-        borderRadius: '3px',
-        padding: '16px',
+        background: 'var(--surface2)', border: '1px solid var(--status-blocked-bg)',
+        borderRadius: '10px', padding: '20px',
       }}>
         <div style={{
-          fontSize: '10px', letterSpacing: '1.5px', textTransform: 'uppercase',
-          color: 'var(--muted)', fontFamily: 'var(--mono)', marginBottom: '8px',
+          fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
+          color: 'var(--muted)', fontWeight: '600', marginBottom: '10px',
         }}>
           {icon} {title}
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--red)', fontFamily: 'var(--mono)' }}>
+        <div style={{ fontSize: '14px', color: 'var(--red)', fontFamily: 'var(--mono)' }}>
           Error: {data.error}
         </div>
       </div>
@@ -176,70 +263,56 @@ function DataColumn({ title, icon, data, source, emptyMsg }) {
   return (
     <div style={{
       flex: 1, minWidth: 0,
-      background: 'var(--surface2)',
-      border: '1px solid var(--border)',
-      borderRadius: '3px',
-      padding: '16px',
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: '10px', padding: '20px',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: '12px',
+        marginBottom: '14px',
       }}>
         <span style={{
-          fontSize: '10px', letterSpacing: '1.5px', textTransform: 'uppercase',
-          color: 'var(--muted)', fontFamily: 'var(--mono)',
+          fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
+          color: 'var(--muted)', fontWeight: '600',
         }}>
           {icon} {title}
         </span>
         <span style={{
-          fontSize: '10px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
+          fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
         }}>
           {source === 'github' ? `${data.totalOpen} open` : `${data.total} active`}
         </span>
       </div>
 
       {!hasAnything ? (
-        <div style={{ fontSize: '12px', color: 'var(--muted)', fontStyle: 'italic' }}>
+        <div style={{ fontSize: '15px', color: 'var(--muted)', fontStyle: 'italic' }}>
           No open items
         </div>
       ) : source === 'github' ? (
         <>
-          <IssueSection title="Blocked"     items={data.blocked}     color="var(--red)"   source="github" />
-          <IssueSection title="In Progress" items={data.inProgress}  color="var(--blue)"  source="github" />
-          <IssueSection title="Stale"       items={data.stale}       color="#886600"       source="github" defaultOpen={false} />
-          <IssueSection title="Open"        items={data.open}        color="var(--muted2)" source="github" defaultOpen={false} />
+          <IssueSection title="Blocked"     items={data.blocked}     color="var(--status-blocked-text)"  bgColor="var(--status-blocked-bg)"  source="github" />
+          <IssueSection title="In Progress" items={data.inProgress}  color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" source="github" />
+          <IssueSection title="Stale"       items={data.stale}       color="var(--status-stale-text)"    bgColor="var(--status-stale-bg)"    source="github" defaultOpen={false} />
+          <IssueSection title="Open"        items={data.open}        color="var(--muted2)"               source="github" defaultOpen={false} />
         </>
       ) : (
         <>
-          <IssueSection title="In Progress" items={data.inProgress}  color="var(--blue)"  source="userback" />
-          <IssueSection title="Open"        items={data.open}        color="var(--muted2)" source="userback" defaultOpen={false} />
-          <IssueSection title="On Hold"     items={data.onHold}      color="#886600"       source="userback" defaultOpen={false} />
+          <IssueSection title="In Progress" items={data.inProgress}  color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" source="userback" />
+          <IssueSection title="Open"        items={data.open}        color="var(--muted2)"               source="userback" defaultOpen={false} />
+          <IssueSection title="On Hold"     items={data.onHold}      color="var(--status-stale-text)"    bgColor="var(--status-stale-bg)"    source="userback" defaultOpen={false} />
         </>
       )}
 
       {source === 'github' && data.closedThisWeek?.length > 0 && (
-        <IssueSection
-          title="Closed this week"
-          items={data.closedThisWeek}
-          color="var(--green)"
-          source="github"
-          defaultOpen={false}
-        />
+        <IssueSection title="Closed this week" items={data.closedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" source="github" defaultOpen={false} />
       )}
       {source === 'userback' && data.resolvedThisWeek?.length > 0 && (
-        <IssueSection
-          title="Resolved this week"
-          items={data.resolvedThisWeek}
-          color="var(--green)"
-          source="userback"
-          defaultOpen={false}
-        />
+        <IssueSection title="Resolved this week" items={data.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" source="userback" defaultOpen={false} />
       )}
     </div>
   );
 }
 
-// ── Project card ──────────────────────────────────────────────────────────────
+// ── Project card ─────────────────────────────────────────────────────────────
 function ProjectCard({ project }) {
   const [expanded, setExpanded] = useState(true);
   const cfg = HEALTH_CONFIG[project.health] || HEALTH_CONFIG.clear;
@@ -260,63 +333,48 @@ function ProjectCard({ project }) {
   return (
     <div style={{
       background: 'var(--surface)',
-      border: `1px solid var(--border)`,
-      borderLeft: `3px solid ${cfg.dot}`,
-      borderRadius: '4px',
-      marginBottom: '12px',
+      border: '1px solid var(--border)',
+      borderLeft: `4px solid ${cfg.dot}`,
+      borderRadius: '10px',
+      marginBottom: '14px',
       overflow: 'hidden',
     }}>
       {/* Card header */}
       <button
         onClick={() => setExpanded(e => !e)}
         style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
+          display: 'flex', alignItems: 'center', gap: '12px',
           width: '100%', background: 'none', border: 'none',
-          padding: '14px 16px', cursor: 'pointer',
+          padding: '16px 20px', cursor: 'pointer',
           borderBottom: expanded ? '1px solid var(--border)' : 'none',
         }}
       >
-        <HealthDot health={project.health} />
         <span style={{
-          fontSize: '15px', fontWeight: '700', color: 'var(--text)',
+          fontSize: '17px', fontWeight: '600', color: 'var(--text)',
           flex: 1, textAlign: 'left',
         }}>
           {project.name}
         </span>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {project.github?.blocked?.length > 0 && (
-            <span style={{
-              fontSize: '10px', fontFamily: 'var(--mono)',
-              background: '#cc220022', color: 'var(--red)',
-              padding: '2px 7px', borderRadius: '2px', border: '1px solid #cc220033',
-            }}>
-              {project.github.blocked.length} blocked
-            </span>
-          )}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {ghTotal !== null && (
             <span style={{
-              fontSize: '10px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
+              fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
+              background: 'var(--surface2)', padding: '3px 10px', borderRadius: '6px',
             }}>
               GH: {ghTotal}
             </span>
           )}
           {ubTotal !== null && (
             <span style={{
-              fontSize: '10px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
+              fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
+              background: 'var(--surface2)', padding: '3px 10px', borderRadius: '6px',
             }}>
               UB: {ubTotal}
             </span>
           )}
-          <span style={{
-            fontSize: '11px', fontFamily: 'var(--mono)',
-            background: `${cfg.color}18`, color: cfg.dot,
-            padding: '2px 8px', borderRadius: '2px',
-            letterSpacing: '0.5px',
-          }}>
-            {cfg.label}
-          </span>
-          <span style={{ fontSize: '12px', color: 'var(--muted)', marginLeft: '4px' }}>
+          <StatusBadge health={project.health} />
+          <span style={{ fontSize: '14px', color: 'var(--muted)', marginLeft: '4px' }}>
             {expanded ? '▲' : '▼'}
           </span>
         </div>
@@ -324,7 +382,7 @@ function ProjectCard({ project }) {
 
       {expanded && (
         <div style={{
-          display: 'flex', gap: '12px', padding: '14px 16px',
+          display: 'flex', gap: '14px', padding: '16px 20px',
           flexWrap: 'wrap',
         }}>
           <DataColumn
@@ -347,24 +405,21 @@ function ProjectCard({ project }) {
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
+// ── Dashboard ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
-  const [filter, setFilter]   = useState('all'); // all | blocked | active
+  const [filter, setFilter]   = useState('all');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/data');
-      if (res.status === 401) {
-        router.push('/');
-        return;
-      }
+      if (res.status === 401) { router.push('/'); return; }
       if (!res.ok) throw new Error('Failed to load data');
       const json = await res.json();
       setData(json);
@@ -384,109 +439,70 @@ export default function Dashboard() {
   }
 
   const filteredProjects = data?.projects?.filter(p => {
-    if (filter === 'blocked') return p.health === 'blocked';
-    if (filter === 'active')  return p.health === 'active' || p.health === 'blocked' || p.health === 'stale';
-    return true;
+    if (filter === 'all') return true;
+    return p.health === filter;
   }) || [];
 
-  const totalBlocked = data?.projects?.reduce((n, p) =>
-    n + (p.github?.blocked?.length || 0), 0) || 0;
-  const totalActive  = data?.projects?.filter(p =>
-    p.health !== 'clear').length || 0;
+  const statusCounts = {};
+  data?.projects?.forEach(p => {
+    statusCounts[p.health] = (statusCounts[p.health] || 0) + 1;
+  });
 
   return (
     <>
       <Head>
-        <title>Digiteam Ops Dashboard</title>
+        <title>Digiteam Dashboard</title>
         <meta name="robots" content="noindex,nofollow" />
       </Head>
 
-      {/* Background grid */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0,
-        backgroundImage: `
-          linear-gradient(rgba(224,60,26,0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(224,60,26,0.02) 1px, transparent 1px)
-        `,
-        backgroundSize: '48px 48px',
-        pointerEvents: 'none',
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
-        {/* Top bar */}
+      <div style={{ minHeight: '100vh' }}>
+        {/* ── Top bar ── */}
         <header style={{
           position: 'sticky', top: 0, zIndex: 10,
-          background: 'rgba(10,10,10,0.95)',
-          backdropFilter: 'blur(8px)',
-          borderBottom: '1px solid var(--border)',
+          background: 'var(--dt-navy)',
           padding: '0 24px',
-          display: 'flex', alignItems: 'center', gap: '16px', height: '52px',
+          display: 'flex', alignItems: 'center', gap: '16px', height: '60px',
         }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <div style={{
-              width: '20px', height: '20px',
-              background: 'var(--orange)',
-              clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-            }} />
-            <span style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '-0.3px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <DigiteamLogo size={32} />
+            <span style={{ fontSize: '18px', fontWeight: '600', color: '#fff', letterSpacing: '-0.3px' }}>
               digiteam
             </span>
-            <span style={{
-              fontSize: '9px', color: 'var(--muted)', letterSpacing: '2px',
-              textTransform: 'uppercase', fontFamily: 'var(--mono)',
-              paddingLeft: '8px', borderLeft: '1px solid var(--border)',
-            }}>
-              Ops
-            </span>
           </div>
 
-          {/* Stats */}
-          {data && !loading && (
-            <div style={{
-              display: 'flex', gap: '16px', marginLeft: '16px',
-              fontFamily: 'var(--mono)', fontSize: '11px',
-            }}>
-              {totalBlocked > 0 && (
-                <span style={{ color: 'var(--red)' }}>
-                  ⚠ {totalBlocked} blocked
-                </span>
-              )}
-              <span style={{ color: 'var(--muted2)' }}>
-                {totalActive}/{data.projects.length} active
-              </span>
-            </div>
-          )}
+          {/* Nav */}
+          <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
+            <button
+              onClick={() => router.push('/dashboard')}
+              style={{
+                background: 'rgba(247,173,57,0.15)', color: '#f7ad39',
+                border: 'none', borderRadius: '6px',
+                fontSize: '14px', fontWeight: '500',
+                padding: '6px 14px',
+              }}
+            >
+              Projects
+            </button>
+            <button
+              onClick={() => router.push('/admin')}
+              style={{
+                background: 'transparent', color: 'rgba(255,255,255,0.5)',
+                border: 'none', borderRadius: '6px',
+                fontSize: '14px', fontWeight: '500',
+                padding: '6px 14px',
+              }}
+            >
+              Admin
+            </button>
+          </nav>
 
-          {/* Spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {['all', 'blocked', 'active'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                style={{
-                  background: filter === f ? 'var(--orange)' : 'var(--surface)',
-                  color: filter === f ? '#fff' : 'var(--muted2)',
-                  border: `1px solid ${filter === f ? 'var(--orange)' : 'var(--border2)'}`,
-                  borderRadius: '3px',
-                  fontFamily: 'var(--mono)', fontSize: '10px',
-                  letterSpacing: '0.5px', textTransform: 'uppercase',
-                  padding: '4px 10px',
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Refresh + last updated */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Refresh + sign out */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {lastFetch && (
               <span style={{
-                fontSize: '10px', color: 'var(--muted)',
+                fontSize: '13px', color: 'rgba(255,255,255,0.35)',
                 fontFamily: 'var(--mono)',
               }}>
                 {lastFetch.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}
@@ -496,12 +512,10 @@ export default function Dashboard() {
               onClick={fetchData}
               disabled={loading}
               style={{
-                background: 'var(--surface2)',
-                border: '1px solid var(--border2)',
-                color: loading ? 'var(--muted)' : 'var(--text)',
-                borderRadius: '3px', padding: '4px 10px',
-                fontFamily: 'var(--mono)', fontSize: '10px',
-                letterSpacing: '0.5px',
+                background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+                color: loading ? 'rgba(255,255,255,0.3)' : '#fff',
+                borderRadius: '6px', padding: '6px 14px',
+                fontSize: '13px', fontWeight: '500',
               }}
             >
               {loading ? '⟳' : '↺ Refresh'}
@@ -510,30 +524,34 @@ export default function Dashboard() {
               onClick={handleLogout}
               style={{
                 background: 'none', border: 'none',
-                color: 'var(--muted)', fontSize: '10px',
-                fontFamily: 'var(--mono)', letterSpacing: '0.5px',
-                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.35)', fontSize: '13px',
               }}
             >
               Sign out
             </button>
-            <button
-              onClick={() => router.push('/admin')}
-              style={{
-                background: 'none', border: '1px solid var(--border2)',
-                color: 'var(--muted2)', borderRadius: '3px',
-                fontFamily: 'var(--mono)', fontSize: '10px',
-                letterSpacing: '0.5px', textTransform: 'uppercase',
-                padding: '4px 10px', cursor: 'pointer',
-              }}
-            >
-              ⚙ Admin
-            </button>
           </div>
         </header>
 
-        {/* Main content */}
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+        {/* ── Main content ── */}
+        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '28px 24px' }}>
+
+          {/* Page title */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '12px',
+            marginBottom: '24px',
+          }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)' }}>
+              Project overview
+            </h1>
+            <StatusLegend />
+            {data && !loading && (
+              <span style={{
+                fontSize: '15px', color: 'var(--muted)', marginLeft: '8px',
+              }}>
+                {data.projects.length} projects
+              </span>
+            )}
+          </div>
 
           {loading && !data && (
             <div style={{
@@ -542,16 +560,14 @@ export default function Dashboard() {
               minHeight: '60vh', gap: '16px',
             }}>
               <div style={{
-                width: '32px', height: '32px',
-                border: '2px solid var(--border2)',
+                width: '36px', height: '36px',
+                border: '3px solid var(--border)',
                 borderTopColor: 'var(--orange)',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
               }} />
               <span style={{
-                fontSize: '11px', color: 'var(--muted)',
-                fontFamily: 'var(--mono)', letterSpacing: '2px',
-                textTransform: 'uppercase',
+                fontSize: '15px', color: 'var(--muted)',
               }}>
                 Fetching data...
               </span>
@@ -561,9 +577,9 @@ export default function Dashboard() {
 
           {error && (
             <div style={{
-              background: '#cc220011', border: '1px solid #cc220033',
-              borderRadius: '4px', padding: '16px 20px',
-              color: 'var(--red)', fontFamily: 'var(--mono)', fontSize: '13px',
+              background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33',
+              borderRadius: '10px', padding: '18px 22px',
+              color: 'var(--red)', fontSize: '15px',
               marginBottom: '20px',
             }}>
               Error: {error}
@@ -572,51 +588,74 @@ export default function Dashboard() {
 
           {data && (
             <>
-              {/* Summary strip */}
+              {/* ── Status summary strip ── */}
               <div style={{
                 display: 'flex', gap: '12px', marginBottom: '24px',
                 flexWrap: 'wrap',
               }}>
-                {Object.entries(HEALTH_CONFIG).map(([key, cfg]) => {
-                  const count = data.projects.filter(p => p.health === key).length;
+                {/* All filter */}
+                <button
+                  onClick={() => setFilter('all')}
+                  style={{
+                    background: filter === 'all' ? 'var(--dt-navy)' : 'var(--surface)',
+                    color: filter === 'all' ? '#fff' : 'var(--text)',
+                    border: `1px solid ${filter === 'all' ? 'var(--dt-navy)' : 'var(--border)'}`,
+                    borderRadius: '10px', padding: '12px 20px',
+                    cursor: 'pointer', minWidth: '100px', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ fontSize: '24px', fontWeight: '700', lineHeight: 1 }}>
+                    {data.projects.length}
+                  </div>
+                  <div style={{
+                    fontSize: '13px', marginTop: '4px',
+                    color: filter === 'all' ? 'rgba(255,255,255,0.6)' : 'var(--muted)',
+                    fontWeight: '500',
+                  }}>
+                    All projects
+                  </div>
+                </button>
+
+                {['blocked', 'stale', 'inflight', 'active', 'clear'].map(key => {
+                  const cfg = HEALTH_CONFIG[key];
+                  const count = statusCounts[key] || 0;
+                  const isActive = filter === key;
                   return (
-                    <div
+                    <button
                       key={key}
-                      onClick={() => setFilter(key === 'clear' ? 'all' : key === 'blocked' ? 'blocked' : 'active')}
+                      onClick={() => setFilter(isActive ? 'all' : key)}
                       style={{
-                        background: 'var(--surface)',
-                        border: `1px solid var(--border)`,
-                        borderLeft: `3px solid ${cfg.dot}`,
-                        borderRadius: '3px',
-                        padding: '10px 16px',
-                        cursor: 'pointer',
-                        minWidth: '100px',
+                        background: isActive ? cfg.bg : 'var(--surface)',
+                        border: `1px solid ${isActive ? cfg.dot : 'var(--border)'}`,
+                        borderLeft: `4px solid ${cfg.dot}`,
+                        borderRadius: '10px', padding: '12px 20px',
+                        cursor: 'pointer', minWidth: '100px', textAlign: 'left',
+                        opacity: count === 0 ? 0.5 : 1,
                       }}
                     >
                       <div style={{
-                        fontSize: '22px', fontWeight: '800', color: cfg.dot,
-                        lineHeight: 1,
+                        fontSize: '24px', fontWeight: '700', lineHeight: 1,
+                        color: cfg.dot,
                       }}>
                         {count}
                       </div>
                       <div style={{
-                        fontSize: '9px', color: 'var(--muted)',
-                        fontFamily: 'var(--mono)', letterSpacing: '1.5px',
-                        textTransform: 'uppercase', marginTop: '4px',
+                        fontSize: '13px', marginTop: '4px', color: cfg.text,
+                        fontWeight: '500',
                       }}>
                         {cfg.label}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
 
                 {lastFetch && !loading && (
                   <div style={{
                     marginLeft: 'auto', alignSelf: 'center',
-                    fontSize: '10px', color: 'var(--muted)',
+                    fontSize: '13px', color: 'var(--muted)',
                     fontFamily: 'var(--mono)',
                   }}>
-                    Last updated {lastFetch.toLocaleString('en-CA', {
+                    Updated {lastFetch.toLocaleString('en-CA', {
                       month: 'short', day: 'numeric',
                       hour: '2-digit', minute: '2-digit',
                     })}
@@ -624,12 +663,13 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Project cards */}
+              {/* ── Project cards ── */}
               {filteredProjects.length === 0 ? (
                 <div style={{
                   textAlign: 'center', padding: '60px',
-                  color: 'var(--muted)', fontFamily: 'var(--mono)',
-                  fontSize: '12px', letterSpacing: '1px',
+                  color: 'var(--muted)', fontSize: '16px',
+                  background: 'var(--surface)', borderRadius: '10px',
+                  border: '1px solid var(--border)',
                 }}>
                   No projects match this filter
                 </div>
