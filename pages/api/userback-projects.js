@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   // Raw debug — returns the exact Userback API response
   try {
-    const response = await fetch('https://api.userback.io/1.0/project', {
+    const response = await fetch('https://rest.userback.io/1.0/project', {
       headers: {
         'Authorization': `Bearer ${process.env.USERBACK_API_KEY}`,
         'Content-Type': 'application/json',
