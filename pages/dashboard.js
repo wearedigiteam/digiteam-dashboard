@@ -166,12 +166,12 @@ function ItemRow({ item, source }) {
     : null;
   const isStale = daysSince !== null && daysSince > 14;
 
-  const hasAssignee = source === 'github'
-    ? (item.assignees?.length > 0)
-    : !!item.assignee;
-  const assigneeLabel = source === 'github'
+  // Only show assignee names — skip numeric IDs that weren't resolved
+  const rawAssignee = source === 'github'
     ? (item.assignees?.join(', ') || '')
     : (item.assignee || '');
+  const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
+  const hasAssignee = !!assigneeLabel;
 
   const hasSecondLine = hasAssignee || dateLabel;
 
@@ -240,8 +240,8 @@ function ItemRow({ item, source }) {
             <span style={{
               fontSize: '13px', fontFamily: 'var(--mono)',
               marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap',
-              color: isStale ? '#7a6400' : 'var(--muted)',
-              background: isStale ? '#fff176' : 'transparent',
+              color: isStale ? '#6b5900' : 'var(--muted)',
+              background: isStale ? '#ffeb3b' : 'transparent',
               padding: isStale ? '1px 8px' : '0',
               borderRadius: '4px',
             }}>
