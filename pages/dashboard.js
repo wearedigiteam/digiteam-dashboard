@@ -517,6 +517,18 @@ export default function Dashboard() {
             >
               Sign out
             </button>
+            <button
+              onClick={() => router.push('/admin')}
+              style={{
+                background: 'none', border: '1px solid var(--border2)',
+                color: 'var(--muted2)', borderRadius: '3px',
+                fontFamily: 'var(--mono)', fontSize: '10px',
+                letterSpacing: '0.5px', textTransform: 'uppercase',
+                padding: '4px 10px', cursor: 'pointer',
+              }}
+            >
+              ⚙ Admin
+            </button>
           </div>
         </header>
 
