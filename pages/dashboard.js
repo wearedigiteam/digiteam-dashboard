@@ -142,20 +142,46 @@ function StatusLegend() {
 }
 
 // ── Issue / Task row ─────────────────────────────────────────────────────────
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  const now = new Date();
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function ItemRow({ item, source }) {
+  // For GitHub: updatedAt comes from the issue. For Userback: it's the modified field.
+  const lastModified = item.updatedAt || item.createdAt;
+  const dateLabel = formatDate(lastModified);
+  const daysSince = lastModified
+    ? Math.floor((new Date() - new Date(lastModified)) / (1000 * 60 * 60 * 24))
+    : null;
+
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: '10px',
       padding: '9px 0',
       borderBottom: '1px solid var(--border)',
     }}>
-      <span style={{
-        fontFamily: 'var(--mono)', fontSize: '13px',
-        color: 'var(--muted2)', flexShrink: 0, paddingTop: '1px',
-        minWidth: '30px',
-      }}>
-        {source === 'github' ? `#${item.id}` : '●'}
-      </span>
+      {/* Show issue number for GitHub only */}
+      {source === 'github' && (
+        <span style={{
+          fontFamily: 'var(--mono)', fontSize: '13px',
+          color: 'var(--muted2)', flexShrink: 0, paddingTop: '1px',
+          minWidth: '30px',
+        }}>
+          #{item.id}
+        </span>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         {item.url ? (
           <a
@@ -190,16 +216,17 @@ function ItemRow({ item, source }) {
           </span>
         )}
       </div>
-      {item.daysSince !== undefined && (
+      {dateLabel && (
         <span style={{
           fontSize: '13px',
-          color: item.daysSince > 14 ? 'var(--status-stale-text)' : 'var(--muted)',
+          color: daysSince > 14 ? 'var(--status-stale-text)' : 'var(--muted)',
           fontFamily: 'var(--mono)', flexShrink: 0, paddingTop: '2px',
-          background: item.daysSince > 14 ? 'var(--status-stale-bg)' : 'transparent',
-          padding: item.daysSince > 14 ? '1px 8px' : '1px 0',
+          background: daysSince > 14 ? 'var(--status-stale-bg)' : 'transparent',
+          padding: daysSince > 14 ? '1px 8px' : '1px 0',
           borderRadius: '4px',
+          whiteSpace: 'nowrap',
         }}>
-          {item.daysSince}d
+          {dateLabel}
         </span>
       )}
     </div>
@@ -385,22 +412,22 @@ function DataColumn({ title, icon, data, source, emptyMsg, loading: isLoading })
         <>
           <IssueSection title="Blocked"     items={data.blocked}     color="var(--status-blocked-text)"  bgColor="var(--status-blocked-bg)"  source="github" />
           <IssueSection title="In Progress" items={data.inProgress}  color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" source="github" />
-          <IssueSection title="Stale"       items={data.stale}       color="var(--status-stale-text)"    bgColor="var(--status-stale-bg)"    source="github" defaultOpen={false} />
-          <IssueSection title="Open"        items={data.open}        color="var(--muted2)"               source="github" defaultOpen={false} />
+          <IssueSection title="Stale"       items={data.stale}       color="var(--status-stale-text)"    bgColor="var(--status-stale-bg)"    source="github" />
+          <IssueSection title="Open"        items={data.open}        color="var(--muted2)"               source="github" />
         </>
       ) : (
         <>
           <IssueSection title="In Progress" items={data.inProgress}  color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" source="userback" />
-          <IssueSection title="Open"        items={data.open}        color="var(--muted2)"               source="userback" defaultOpen={false} />
-          <IssueSection title="On Hold"     items={data.onHold}      color="var(--status-stale-text)"    bgColor="var(--status-stale-bg)"    source="userback" defaultOpen={false} />
+          <IssueSection title="Open"        items={data.open}        color="var(--muted2)"               source="userback" />
+          <IssueSection title="On Hold"     items={data.onHold}      color="var(--status-stale-text)"    bgColor="var(--status-stale-bg)"    source="userback" />
         </>
       )}
 
       {source === 'github' && data.closedThisWeek?.length > 0 && (
-        <IssueSection title="Closed this week" items={data.closedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" source="github" defaultOpen={false} />
+        <IssueSection title="Closed this week" items={data.closedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" source="github" />
       )}
       {source === 'userback' && data.resolvedThisWeek?.length > 0 && (
-        <IssueSection title="Resolved this week" items={data.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" source="userback" defaultOpen={false} />
+        <IssueSection title="Resolved this week" items={data.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" source="userback" />
       )}
     </div>
   );
