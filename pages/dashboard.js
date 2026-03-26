@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
@@ -77,10 +77,25 @@ function StatusBadge({ health }) {
 // ── Status legend (expandable ?) ─────────────────────────────────────────────
 function StatusLegend() {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  function handleToggle() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 8,
+        left: Math.max(12, Math.min(rect.left - 160, window.innerWidth - 392)),
+      });
+    }
+    setOpen(o => !o);
+  }
+
   return (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
+    <span style={{ display: 'inline-block' }}>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleToggle}
         style={{
           background: open ? 'var(--orange)' : 'var(--surface)',
           color: open ? '#fff' : 'var(--muted)',
@@ -98,13 +113,14 @@ function StatusLegend() {
         <>
           <div
             onClick={() => setOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 999 }}
           />
           <div style={{
-            position: 'absolute', top: '34px', left: '50%', transform: 'translateX(-50%)',
+            position: 'fixed', top: pos.top, left: pos.left,
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '20px', width: '380px',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', zIndex: 100,
+            maxWidth: 'calc(100vw - 24px)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', zIndex: 1000,
           }}>
             <div style={{
               fontSize: '15px', fontWeight: '600', color: 'var(--text)',
