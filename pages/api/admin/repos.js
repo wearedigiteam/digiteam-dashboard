@@ -26,8 +26,8 @@ export default async function handler(req, res) {
       })));
     }
 
-    // Sort by most recently pushed
-    repos.sort((a, b) => new Date(b.pushedAt) - new Date(a.pushedAt));
+    // Sort alphabetically
+    repos.sort((a, b) => a.name.localeCompare(b.name));
 
     return res.status(200).json({ repos });
   } catch (err) {
