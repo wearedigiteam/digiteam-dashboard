@@ -157,19 +157,33 @@ function ItemRow({ item, source }) {
         {source === 'github' ? `#${item.id}` : '●'}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            fontSize: '15px', color: 'var(--text)',
-            display: 'block', lineHeight: '1.4',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}
-          title={item.title}
-        >
-          {item.title}
-        </a>
+        {item.url ? (
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: '15px', color: 'var(--text)',
+              display: 'block', lineHeight: '1.4',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              textDecoration: 'none',
+            }}
+            title={item.title}
+          >
+            {item.title}
+          </a>
+        ) : (
+          <span
+            style={{
+              fontSize: '15px', color: 'var(--text)',
+              display: 'block', lineHeight: '1.4',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}
+            title={item.title}
+          >
+            {item.title}
+          </span>
+        )}
         {(item.assignees?.length > 0 || item.assignee) && (
           <span style={{ fontSize: '13px', color: 'var(--muted2)', fontFamily: 'var(--mono)' }}>
             {item.assignees?.join(', ') || item.assignee}
@@ -236,7 +250,39 @@ function IssueSection({ title, items, color, bgColor, source, defaultOpen = true
 }
 
 // ── Data column (GitHub or Userback) ─────────────────────────────────────────
-function DataColumn({ title, icon, data, source, emptyMsg }) {
+function DataColumn({ title, icon, data, source, emptyMsg, loading: isLoading }) {
+  if (isLoading) {
+    return (
+      <div style={{
+        flex: 1, minWidth: 0,
+        background: 'var(--surface2)', border: '1px solid var(--border)',
+        borderRadius: '10px', padding: '20px',
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          fontSize: '13px', letterSpacing: '0.5px', textTransform: 'uppercase',
+          color: 'var(--muted)', fontWeight: '600', marginBottom: '10px',
+        }}>
+          {icon} {title}
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          fontSize: '14px', color: 'var(--muted)',
+        }}>
+          <div style={{
+            width: '14px', height: '14px',
+            border: '2px solid var(--border)',
+            borderTopColor: 'var(--orange)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          Loading Userback data...
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
+  }
+
   if (!data) {
     return (
       <div style={{

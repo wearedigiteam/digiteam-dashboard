@@ -1,11 +1,13 @@
 import { getTokenFromRequest, verifyToken } from '../../lib/auth';
 import { fetchRepoIssues } from '../../lib/github';
-import { fetchAllFeedbackByProject } from '../../lib/userback';
+import { fetchProjectTasks } from '../../lib/userback';
 
 const ORG    = 'wearedigiteam';
 const REPO   = 'digiteam-dashboard';
 const BRANCH = 'main';
 const PATH   = 'mapping.json';
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function getMapping() {
   try {
@@ -26,7 +28,6 @@ async function getMapping() {
   }
 }
 
-// ── Auto-compute project health ─────────────────────────────────────────────
 function computeHealth({ github, userback }) {
   const ghBlocked    = github?.blocked?.length    || 0;
   const ghStale      = github?.stale?.length      || 0;
@@ -40,27 +41,17 @@ function computeHealth({ github, userback }) {
   const ubOnHold     = userback?.onHold?.length      || 0;
   const ubResolvedRecently = userback?.resolvedThisWeek?.length || 0;
   const ubTotal      = ubOpen + ubInProgress + ubOnHold;
-
   const totalOpen    = ghTotal + ubTotal;
 
-  // 1. Blocked
   if (ghBlocked > 0 || ubOnHold > 0) return 'blocked';
 
-  // 2. Recent activity signals
   const ghHasRecentWork = (ghInProgress + ghOpen) > 0 || ghClosedRecently > 0;
   const ubHasRecentWork = ubInProgress > 0 || ubResolvedRecently > 0;
   const anyRecentWork   = ghHasRecentWork || ubHasRecentWork;
 
-  // 3. Stale: open items but no recent work
   if (totalOpen > 0 && !anyRecentWork) return 'stale';
-
-  // 4. In Flight: recent work across BOTH sources
   if (ghHasRecentWork && ubHasRecentWork) return 'inflight';
-
-  // 5. Active: open items or recent closures
   if (totalOpen > 0 || anyRecentWork) return 'active';
-
-  // 6. Clear
   return 'clear';
 }
 
@@ -81,26 +72,30 @@ export default async function handler(req, res) {
       });
     }
 
-    // ── Fetch GitHub data per-project (parallel — GitHub handles this fine) ──
+    // ── GitHub: parallel (GitHub handles concurrent requests fine) ──
     const githubResults = await Promise.all(
       mapping.map(project =>
         project.githubRepo ? fetchRepoIssues(project.githubRepo) : null
       )
     );
 
-    // ── Fetch ALL Userback data in one pass (sequential with rate limiting) ──
-    const userbackProjectIds = mapping
-      .filter(p => p.userbackId)
-      .map(p => String(p.userbackId));
+    // ── Userback: sequential with 200ms gaps to respect rate limits ──
+    // Each project = 1-2 API calls (100 items/page, sorted newest first)
+    const userbackResults = [];
+    for (const project of mapping) {
+      if (project.userbackId) {
+        const result = await fetchProjectTasks(String(project.userbackId));
+        userbackResults.push(result);
+        await delay(200);
+      } else {
+        userbackResults.push(null);
+      }
+    }
 
-    const userbackResults = await fetchAllFeedbackByProject(userbackProjectIds);
-
-    // ── Combine results ──
+    // ── Combine ──
     const results = mapping.map((project, i) => {
       const github = githubResults[i];
-      const userback = project.userbackId
-        ? userbackResults[String(project.userbackId)] || null
-        : null;
+      const userback = userbackResults[i];
 
       const ghTotal = github
         ? (github.blocked?.length || 0) + (github.inProgress?.length || 0) +
