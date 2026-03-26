@@ -159,75 +159,96 @@ function formatDate(dateStr) {
 }
 
 function ItemRow({ item, source }) {
-  // For GitHub: updatedAt comes from the issue. For Userback: it's the modified field.
   const lastModified = item.updatedAt || item.createdAt;
   const dateLabel = formatDate(lastModified);
   const daysSince = lastModified
     ? Math.floor((new Date() - new Date(lastModified)) / (1000 * 60 * 60 * 24))
     : null;
+  const isStale = daysSince !== null && daysSince > 14;
+
+  const hasAssignee = source === 'github'
+    ? (item.assignees?.length > 0)
+    : !!item.assignee;
+  const assigneeLabel = source === 'github'
+    ? (item.assignees?.join(', ') || '')
+    : (item.assignee || '');
+
+  const hasSecondLine = hasAssignee || dateLabel;
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: '10px',
       padding: '9px 0',
       borderBottom: '1px solid var(--border)',
     }}>
-      {/* Show issue number for GitHub only */}
-      {source === 'github' && (
-        <span style={{
-          fontFamily: 'var(--mono)', fontSize: '13px',
-          color: 'var(--muted2)', flexShrink: 0, paddingTop: '1px',
-          minWidth: '30px',
-        }}>
-          #{item.id}
-        </span>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {item.url ? (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              fontSize: '15px', color: 'var(--text)',
-              display: 'block', lineHeight: '1.4',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              textDecoration: 'none',
-            }}
-            title={item.title}
-          >
-            {item.title}
-          </a>
-        ) : (
-          <span
-            style={{
-              fontSize: '15px', color: 'var(--text)',
-              display: 'block', lineHeight: '1.4',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}
-            title={item.title}
-          >
-            {item.title}
+      {/* First line: issue number (GitHub only) + title */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        {source === 'github' && (
+          <span style={{
+            fontFamily: 'var(--mono)', fontSize: '13px',
+            color: 'var(--muted2)', flexShrink: 0, paddingTop: '1px',
+            minWidth: '30px',
+          }}>
+            #{item.id}
           </span>
         )}
-        {(item.assignees?.length > 0 || item.assignee) && (
-          <span style={{ fontSize: '13px', color: 'var(--muted2)', fontFamily: 'var(--mono)' }}>
-            {item.assignees?.join(', ') || item.assignee}
-          </span>
-        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {item.url ? (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontSize: '15px', color: 'var(--text)',
+                display: 'block', lineHeight: '1.4',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                textDecoration: 'none',
+              }}
+              title={item.title}
+            >
+              {item.title}
+            </a>
+          ) : (
+            <span
+              style={{
+                fontSize: '15px', color: 'var(--text)',
+                display: 'block', lineHeight: '1.4',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+              title={item.title}
+            >
+              {item.title}
+            </span>
+          )}
+        </div>
       </div>
-      {dateLabel && (
-        <span style={{
-          fontSize: '13px',
-          color: daysSince > 14 ? 'var(--status-stale-text)' : 'var(--muted)',
-          fontFamily: 'var(--mono)', flexShrink: 0, paddingTop: '2px',
-          background: daysSince > 14 ? 'var(--status-stale-bg)' : 'transparent',
-          padding: daysSince > 14 ? '1px 8px' : '1px 0',
-          borderRadius: '4px',
-          whiteSpace: 'nowrap',
+
+      {/* Second line: assignee + last modified date */}
+      {hasSecondLine && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          marginTop: '3px',
+          paddingLeft: source === 'github' ? '40px' : '0',
         }}>
-          {dateLabel}
-        </span>
+          {hasAssignee && (
+            <span style={{
+              fontSize: '13px', color: 'var(--muted2)', fontFamily: 'var(--mono)',
+            }}>
+              {assigneeLabel}
+            </span>
+          )}
+          {dateLabel && (
+            <span style={{
+              fontSize: '13px', fontFamily: 'var(--mono)',
+              marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap',
+              color: isStale ? '#7a6400' : 'var(--muted)',
+              background: isStale ? '#fff176' : 'transparent',
+              padding: isStale ? '1px 8px' : '0',
+              borderRadius: '4px',
+            }}>
+              {dateLabel}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
