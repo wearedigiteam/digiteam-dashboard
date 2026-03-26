@@ -11,12 +11,12 @@ const PROJECTS = [
   {
     name: 'CDA Website Redesign',
     githubRepo: 'cda-website-redesign',
-    userbackId: null, // No Userback project found — check if it exists
+    userbackId: '135347',
   },
   {
     name: 'Vera Therapeutics',
     githubRepo: 'veratx-wp-redesign',
-    userbackId: null, // No Userback project found — check if it exists
+    userbackId: '136797', 
   },
   {
     name: 'Northern Arizona Healthcare',
@@ -29,8 +29,13 @@ const PROJECTS = [
     userbackId: '77643',
   },
   {
-    name: 'First National',
+    name: 'First National - Brokers',
     githubRepo: 'FirstNationalBrokers-Core',
+    userbackId: '47672',
+  },
+  {
+    name: 'First National',
+    githubRepo: '201177-000-FirstNational',
     userbackId: '47672',
   },
   {
