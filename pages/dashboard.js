@@ -704,23 +704,29 @@ export default function Dashboard() {
         .dt-page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
         .dt-page-title h1 { font-size: 24px; font-weight: 600; color: var(--text); }
 
-        /* Status filter strip — horizontal scroll on mobile */
+        /* Status filter strip — horizontal scroll on mobile, includes ? and team filter */
         .dt-status-strip {
-          display: flex; gap: 10px; margin-bottom: 24px;
+          display: flex; gap: 10px; margin-bottom: 20px;
+          align-items: center;
           overflow-x: auto; -webkit-overflow-scrolling: touch;
           padding-bottom: 4px;
           scrollbar-width: none;
         }
         .dt-status-strip::-webkit-scrollbar { display: none; }
         .dt-status-btn {
-          border-radius: 10px; padding: 12px 16px;
-          cursor: pointer; min-width: 90px; text-align: left;
+          border-radius: 10px; padding: 10px 14px;
+          cursor: pointer; min-width: 80px; text-align: left;
           flex-shrink: 0; border: 1px solid var(--border);
         }
-        .dt-status-num { font-size: 22px; font-weight: 700; line-height: 1; }
-        .dt-status-label { font-size: 12px; margin-top: 4px; font-weight: 500; white-space: nowrap; }
+        .dt-status-num { font-size: 20px; font-weight: 700; line-height: 1; }
+        .dt-status-label { font-size: 11px; margin-top: 3px; font-weight: 500; white-space: nowrap; }
 
-        /* Project card */
+        /* Assignee filter (inline with status strip) */
+        .dt-assignee-select {
+          background: var(--surface); border: 1px solid var(--border2);
+          border-radius: 8px; color: var(--text); font-size: 14px;
+          padding: 7px 10px; outline: none; min-width: 140px;
+        }
         .dt-card-header {
           display: flex; align-items: center; gap: 12px;
           width: 100%; background: none; border: none;
@@ -735,17 +741,6 @@ export default function Dashboard() {
         }
         .dt-card-columns > div { flex: 1; min-width: 0; }
 
-        /* Assignee filter */
-        .dt-filter-bar {
-          display: flex; align-items: center; gap: 12px;
-          margin-bottom: 20px; flex-wrap: wrap;
-        }
-        .dt-assignee-select {
-          background: var(--surface); border: 1px solid var(--border2);
-          border-radius: 8px; color: var(--text); font-size: 15px;
-          padding: 8px 12px; outline: none; min-width: 180px;
-        }
-
         /* ── Mobile breakpoints ── */
         @media (max-width: 768px) {
           .dt-header { padding: 0 12px; gap: 8px; height: 52px; }
@@ -758,9 +753,9 @@ export default function Dashboard() {
           .dt-main { padding: 16px 12px; }
           .dt-page-title h1 { font-size: 20px; }
 
-          .dt-status-btn { min-width: 75px; padding: 10px 12px; }
-          .dt-status-num { font-size: 20px; }
-          .dt-status-label { font-size: 11px; }
+          .dt-status-btn { min-width: 65px; padding: 8px 10px; }
+          .dt-status-num { font-size: 18px; }
+          .dt-status-label { font-size: 10px; }
 
           .dt-card-header {
             flex-wrap: wrap; padding: 12px 14px; gap: 8px;
@@ -771,8 +766,7 @@ export default function Dashboard() {
             flex-direction: column; padding: 12px 14px;
           }
 
-          .dt-filter-bar { gap: 8px; }
-          .dt-assignee-select { min-width: 140px; font-size: 14px; }
+          .dt-assignee-select { min-width: 120px; font-size: 13px; }
         }
       `}</style>
 
@@ -845,13 +839,25 @@ export default function Dashboard() {
         {/* ── Main content ── */}
         <main className="dt-main">
 
-          {/* Page title */}
-          <div className="dt-page-title">
-            <h1>Project overview</h1>
-            <StatusLegend />
-            {data && !loading && (
-              <span style={{ fontSize: '15px', color: 'var(--muted)' }}>
-                {data.projects.length} projects
+          {/* Page title row — with Updated timestamp right-aligned */}
+          <div className="dt-page-title" style={{ justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h1>Project overview</h1>
+              {data && !loading && (
+                <span style={{ fontSize: '15px', color: 'var(--muted)' }}>
+                  {data.projects.length} projects
+                </span>
+              )}
+            </div>
+            {lastFetch && !loading && (
+              <span style={{
+                fontSize: '13px', color: 'var(--muted)',
+                fontFamily: 'var(--mono)', whiteSpace: 'nowrap',
+              }}>
+                Updated {lastFetch.toLocaleString('en-CA', {
+                  month: 'short', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
               </span>
             )}
           </div>
@@ -888,7 +894,7 @@ export default function Dashboard() {
 
           {data && (
             <>
-              {/* ── Status filter strip (horizontal scroll on mobile) ── */}
+              {/* ── Single filter row: status buttons + ? + team member ── */}
               <div className="dt-status-strip">
                 <button
                   className="dt-status-btn"
@@ -927,21 +933,29 @@ export default function Dashboard() {
                     </button>
                   );
                 })}
-              </div>
 
-              {/* ── Assignee filter + last updated ── */}
-              <div className="dt-filter-bar">
+                {/* Status legend ? */}
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <StatusLegend />
+                </div>
+
+                {/* Separator + team member filter */}
                 {teamMembers.length > 0 && (
-                  <>
-                    <label style={{ fontSize: '14px', color: 'var(--muted)', fontWeight: '500' }}>
-                      Team member:
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    flexShrink: 0, marginLeft: '4px',
+                    paddingLeft: '12px', borderLeft: '1px solid var(--border)',
+                  }}>
+                    <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>
+                      Team:
                     </label>
                     <select
                       className="dt-assignee-select"
                       value={assigneeFilter}
                       onChange={e => setAssigneeFilter(e.target.value)}
+                      style={{ minWidth: '150px' }}
                     >
-                      <option value="all">All team members</option>
+                      <option value="all">Everyone</option>
                       {teamMembers.map(name => (
                         <option key={name} value={name}>{name}</option>
                       ))}
@@ -952,25 +966,14 @@ export default function Dashboard() {
                         style={{
                           background: 'none', border: '1px solid var(--border2)',
                           borderRadius: '6px', color: 'var(--muted)',
-                          fontSize: '13px', padding: '4px 10px', cursor: 'pointer',
+                          fontSize: '12px', padding: '3px 8px', cursor: 'pointer',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        Clear
+                        ✕
                       </button>
                     )}
-                  </>
-                )}
-                <div style={{ flex: 1 }} />
-                {lastFetch && !loading && (
-                  <span style={{
-                    fontSize: '13px', color: 'var(--muted)',
-                    fontFamily: 'var(--mono)',
-                  }}>
-                    Updated {lastFetch.toLocaleString('en-CA', {
-                      month: 'short', day: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </span>
+                  </div>
                 )}
               </div>
 
