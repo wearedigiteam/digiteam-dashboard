@@ -109,25 +109,39 @@ export default function Admin() {
   const [error, setError] = useState(null);
   const [repoSearch, setRepoSearch] = useState('');
 
+  // User mapping state
+  const [userMapping, setUserMapping] = useState([]);
+  const [githubMembers, setGithubMembers] = useState([]);
+  const [userbackMembers, setUserbackMembers] = useState([]);
+  const [savingUsers, setSavingUsers] = useState(false);
+  const [savedUsers, setSavedUsers] = useState(false);
+
   useEffect(() => {
     async function loadAll() {
       setLoading(true);
       setError(null);
       try {
-        const [mappingRes, reposRes, ubRes] = await Promise.all([
+        const [mappingRes, reposRes, ubRes, userMapRes, ghMembersRes, ubMembersRes] = await Promise.all([
           fetch('/api/admin/mapping'),
           fetch('/api/admin/repos'),
           fetch('/api/userback-projects'),
+          fetch('/api/admin/user-mapping'),
+          fetch('/api/admin/github-members'),
+          fetch('/api/admin/userback-members'),
         ]);
         if (mappingRes.status === 401 || reposRes.status === 401) {
           router.push('/'); return;
         }
-        const [mappingData, reposData, ubData] = await Promise.all([
+        const [mappingData, reposData, ubData, userMapData, ghMembersData, ubMembersData] = await Promise.all([
           mappingRes.json(), reposRes.json(), ubRes.json(),
+          userMapRes.json(), ghMembersRes.json(), ubMembersRes.json(),
         ]);
         setMapping(mappingData.mapping || []);
         setGithubRepos(reposData.repos || []);
         setUserbackProjects(ubData.projects || []);
+        setUserMapping(userMapData.userMapping || []);
+        setGithubMembers(ghMembersData.members || []);
+        setUserbackMembers(ubMembersData.members || []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -173,6 +187,40 @@ export default function Admin() {
   const filteredRepos = githubRepos.filter(r =>
     r.name.toLowerCase().includes(repoSearch.toLowerCase())
   );
+
+  // ── User mapping functions ──
+  function addUserMapping() {
+    setUserMapping(m => [...m, { displayName: '', githubLogin: '', userbackUserId: '' }]);
+  }
+
+  function updateUserMapping(index, updated) {
+    setUserMapping(m => m.map((u, i) => i === index ? updated : u));
+  }
+
+  function removeUserMapping(index) {
+    setUserMapping(m => m.filter((_, i) => i !== index));
+  }
+
+  async function saveUserMapping() {
+    setSavingUsers(true); setError(null); setSavedUsers(false);
+    try {
+      const res = await fetch('/api/admin/user-mapping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMapping }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Save failed');
+      }
+      setSavedUsers(true);
+      setTimeout(() => setSavedUsers(false), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingUsers(false);
+    }
+  }
 
   return (
     <>
@@ -411,6 +459,177 @@ export default function Admin() {
                       {' '}{p.name}
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* ═══ User Mapping ═══ */}
+              <div style={{
+                marginTop: '48px', paddingTop: '32px',
+                borderTop: '2px solid var(--border)',
+              }}>
+                <h2 style={{ fontSize: '22px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
+                  Team member mapping
+                </h2>
+                <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                  Link GitHub usernames to Userback members so the dashboard can show consistent names
+                  and filter by team member across both systems.
+                </p>
+
+                {/* Column headers */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr auto',
+                  gap: '12px', padding: '0 16px 10px',
+                }}>
+                  {['Display name', 'GitHub user', 'Userback member', ''].map((h, i) => (
+                    <div key={i} style={{
+                      fontSize: '13px', color: 'var(--muted)',
+                      fontWeight: '600', textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}>
+                      {h}
+                    </div>
+                  ))}
+                </div>
+
+                {userMapping.length === 0 && (
+                  <div style={{
+                    textAlign: 'center', padding: '40px',
+                    color: 'var(--muted)', fontSize: '15px',
+                    border: '1px dashed var(--border2)',
+                    borderRadius: '10px', marginBottom: '16px',
+                  }}>
+                    No team members mapped yet. Click "Add member" to get started.
+                  </div>
+                )}
+
+                {userMapping.map((user, index) => {
+                  const inputStyle = {
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border2)',
+                    borderRadius: '8px',
+                    color: 'var(--text)',
+                    fontSize: '15px',
+                    padding: '10px 12px',
+                    width: '100%',
+                    outline: 'none',
+                  };
+
+                  return (
+                    <div key={index} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr 1fr auto',
+                      gap: '12px',
+                      alignItems: 'center',
+                      padding: '14px 16px',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      marginBottom: '10px',
+                    }}>
+                      {/* Display name */}
+                      <input
+                        value={user.displayName}
+                        onChange={e => updateUserMapping(index, { ...user, displayName: e.target.value })}
+                        placeholder="e.g. Chris Howell"
+                        style={inputStyle}
+                      />
+
+                      {/* GitHub user */}
+                      <select
+                        value={user.githubLogin || ''}
+                        onChange={e => updateUserMapping(index, { ...user, githubLogin: e.target.value || '' })}
+                        style={{
+                          ...inputStyle,
+                          color: user.githubLogin ? 'var(--text)' : 'var(--muted)',
+                        }}
+                      >
+                        <option value="">— No GitHub user —</option>
+                        {githubMembers.map(m => (
+                          <option key={m.login} value={m.login}>{m.login}</option>
+                        ))}
+                      </select>
+
+                      {/* Userback member */}
+                      <select
+                        value={user.userbackUserId || ''}
+                        onChange={e => {
+                          const selected = userbackMembers.find(m => String(m.userId) === e.target.value);
+                          updateUserMapping(index, {
+                            ...user,
+                            userbackUserId: e.target.value || '',
+                            displayName: user.displayName || (selected?.name || ''),
+                          });
+                        }}
+                        style={{
+                          ...inputStyle,
+                          color: user.userbackUserId ? 'var(--text)' : 'var(--muted)',
+                        }}
+                      >
+                        <option value="">— No Userback member —</option>
+                        {userbackMembers.map(m => (
+                          <option key={m.userId || m.id} value={m.userId || m.id}>{m.name}</option>
+                        ))}
+                      </select>
+
+                      {/* Remove */}
+                      <button
+                        onClick={() => removeUserMapping(index)}
+                        style={{
+                          background: 'var(--status-blocked-bg)',
+                          border: '1px solid #e24b4a33',
+                          borderRadius: '8px',
+                          color: 'var(--status-blocked-text)',
+                          fontSize: '16px',
+                          padding: '8px 12px',
+                          lineHeight: 1,
+                        }}
+                        title="Remove mapping"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Actions */}
+                <div style={{
+                  display: 'flex', gap: '12px', alignItems: 'center',
+                  marginTop: '20px',
+                }}>
+                  <button
+                    onClick={addUserMapping}
+                    style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border2)',
+                      color: 'var(--text)', borderRadius: '8px',
+                      fontSize: '14px', fontWeight: '500',
+                      padding: '10px 18px',
+                    }}
+                  >
+                    + Add member
+                  </button>
+
+                  <button
+                    onClick={saveUserMapping}
+                    disabled={savingUsers}
+                    style={{
+                      background: savingUsers ? 'var(--border2)' : 'var(--orange)',
+                      border: 'none', color: '#fff',
+                      borderRadius: '8px', fontSize: '14px',
+                      fontWeight: '600', padding: '10px 22px',
+                      cursor: savingUsers ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    {savingUsers ? 'Saving...' : 'Save team mapping'}
+                  </button>
+
+                  {savedUsers && (
+                    <span style={{ fontSize: '14px', color: 'var(--green)', fontWeight: '500' }}>
+                      ✓ Saved to repo
+                    </span>
+                  )}
                 </div>
               </div>
             </>

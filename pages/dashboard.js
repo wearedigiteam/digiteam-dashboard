@@ -483,11 +483,9 @@ function ProjectCard({ project }) {
     }}>
       {/* Card header */}
       <button
+        className="dt-card-header"
         onClick={() => setExpanded(e => !e)}
         style={{
-          display: 'flex', alignItems: 'center', gap: '12px',
-          width: '100%', background: 'none', border: 'none',
-          padding: '16px 20px', cursor: 'pointer',
           borderBottom: expanded ? '1px solid var(--border)' : 'none',
         }}
       >
@@ -498,7 +496,7 @@ function ProjectCard({ project }) {
           {project.name}
         </span>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="dt-card-meta">
           {ghTotal !== null && (
             <span style={{
               fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
@@ -523,10 +521,7 @@ function ProjectCard({ project }) {
       </button>
 
       {expanded && (
-        <div style={{
-          display: 'flex', gap: '14px', padding: '16px 20px',
-          flexWrap: 'wrap',
-        }}>
+        <div className="dt-card-columns">
           <DataColumn
             title="GitHub Issues"
             icon={<GitHubIcon size={16} />}
@@ -555,6 +550,7 @@ export default function Dashboard() {
   const [error, setError]     = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
   const [filter, setFilter]   = useState('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -580,10 +576,72 @@ export default function Dashboard() {
     router.push('/');
   }
 
+  // ── Build user mapping lookup ──
+  // { githubLogin: displayName, userbackUserId: displayName }
+  const userMap = {};
+  const displayNames = new Set();
+  (data?.userMapping || []).forEach(u => {
+    if (u.displayName) {
+      if (u.githubLogin) userMap[`gh:${u.githubLogin.toLowerCase()}`] = u.displayName;
+      if (u.userbackUserId) userMap[`ub:${u.userbackUserId}`] = u.displayName;
+      displayNames.add(u.displayName);
+    }
+  });
+
+  // Resolve an assignee to their display name
+  function resolveAssignee(login, source) {
+    if (!login) return null;
+    const key = source === 'github' ? `gh:${login.toLowerCase()}` : `ub:${login}`;
+    return userMap[key] || null;
+  }
+
+  // Check if a project has items assigned to the filtered person
+  function projectMatchesAssignee(project, displayName) {
+    if (!displayName || displayName === 'all') return true;
+
+    // Find which GitHub logins and Userback userIds map to this name
+    const ghLogins = new Set();
+    const ubUserIds = new Set();
+    (data?.userMapping || []).forEach(u => {
+      if (u.displayName === displayName) {
+        if (u.githubLogin) ghLogins.add(u.githubLogin.toLowerCase());
+        if (u.userbackUserId) ubUserIds.add(u.userbackUserId);
+      }
+    });
+
+    // Check GitHub items
+    const ghSources = [
+      ...(project.github?.blocked || []),
+      ...(project.github?.inProgress || []),
+      ...(project.github?.stale || []),
+      ...(project.github?.open || []),
+    ];
+    for (const item of ghSources) {
+      if (item.assignees?.some(a => ghLogins.has(a.toLowerCase()))) return true;
+    }
+
+    // Check Userback items — assignee field is the resolved name or numeric ID
+    const ubSources = [
+      ...(project.userback?.open || []),
+      ...(project.userback?.inProgress || []),
+      ...(project.userback?.onHold || []),
+    ];
+    for (const item of ubSources) {
+      // Check by name match (from member resolution)
+      if (item.assignee === displayName) return true;
+    }
+
+    return false;
+  }
+
   const filteredProjects = data?.projects?.filter(p => {
-    if (filter === 'all') return true;
-    return p.health === filter;
+    const statusMatch = filter === 'all' || p.health === filter;
+    const assigneeMatch = projectMatchesAssignee(p, assigneeFilter);
+    return statusMatch && assigneeMatch;
   }) || [];
+
+  // Sorted list of team members for the dropdown
+  const teamMembers = [...displayNames].sort();
 
   const statusCounts = {};
   data?.projects?.forEach(p => {
@@ -595,32 +653,111 @@ export default function Dashboard() {
       <Head>
         <title>Digiteam Dashboard</title>
         <meta name="robots" content="noindex,nofollow" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
+
+      {/* ── Responsive styles ── */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .dt-header {
+          position: sticky; top: 0; z-index: 10;
+          background: var(--dt-navy);
+          padding: 0 24px;
+          display: flex; align-items: center; gap: 16px; height: 60px;
+        }
+        .dt-header-brand-text { font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+        .dt-main { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+        .dt-page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+        .dt-page-title h1 { font-size: 24px; font-weight: 600; color: var(--text); }
+
+        /* Status filter strip — horizontal scroll on mobile */
+        .dt-status-strip {
+          display: flex; gap: 10px; margin-bottom: 24px;
+          overflow-x: auto; -webkit-overflow-scrolling: touch;
+          padding-bottom: 4px;
+          scrollbar-width: none;
+        }
+        .dt-status-strip::-webkit-scrollbar { display: none; }
+        .dt-status-btn {
+          border-radius: 10px; padding: 12px 16px;
+          cursor: pointer; min-width: 90px; text-align: left;
+          flex-shrink: 0; border: 1px solid var(--border);
+        }
+        .dt-status-num { font-size: 22px; font-weight: 700; line-height: 1; }
+        .dt-status-label { font-size: 12px; margin-top: 4px; font-weight: 500; white-space: nowrap; }
+
+        /* Project card */
+        .dt-card-header {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; background: none; border: none;
+          padding: 16px 20px; cursor: pointer;
+        }
+        .dt-card-meta {
+          display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+        .dt-card-columns {
+          display: flex; gap: 14px; padding: 16px 20px;
+        }
+        .dt-card-columns > div { flex: 1; min-width: 0; }
+
+        /* Assignee filter */
+        .dt-filter-bar {
+          display: flex; align-items: center; gap: 12px;
+          margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .dt-assignee-select {
+          background: var(--surface); border: 1px solid var(--border2);
+          border-radius: 8px; color: var(--text); font-size: 15px;
+          padding: 8px 12px; outline: none; min-width: 180px;
+        }
+
+        /* ── Mobile breakpoints ── */
+        @media (max-width: 768px) {
+          .dt-header { padding: 0 12px; gap: 8px; height: 52px; }
+          .dt-header-brand-text { font-size: 15px; }
+          .dt-header nav { margin-left: 8px !important; }
+          .dt-header nav button { font-size: 13px !important; padding: 5px 10px !important; }
+          .dt-header .dt-header-actions { gap: 6px !important; }
+          .dt-header .dt-header-actions button { font-size: 12px !important; padding: 4px 8px !important; }
+
+          .dt-main { padding: 16px 12px; }
+          .dt-page-title h1 { font-size: 20px; }
+
+          .dt-status-btn { min-width: 75px; padding: 10px 12px; }
+          .dt-status-num { font-size: 20px; }
+          .dt-status-label { font-size: 11px; }
+
+          .dt-card-header {
+            flex-wrap: wrap; padding: 12px 14px; gap: 8px;
+          }
+          .dt-card-meta { width: 100%; justify-content: flex-start; }
+
+          .dt-card-columns {
+            flex-direction: column; padding: 12px 14px;
+          }
+
+          .dt-filter-bar { gap: 8px; }
+          .dt-assignee-select { min-width: 140px; font-size: 14px; }
+        }
+      `}</style>
 
       <div style={{ minHeight: '100vh' }}>
         {/* ── Top bar ── */}
-        <header style={{
-          position: 'sticky', top: 0, zIndex: 10,
-          background: 'var(--dt-navy)',
-          padding: '0 24px',
-          display: 'flex', alignItems: 'center', gap: '16px', height: '60px',
-        }}>
+        <header className="dt-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-            <DigiteamLogo size={32} />
-            <span style={{ fontSize: '18px', fontWeight: '600', color: '#fff', letterSpacing: '-0.3px' }}>
-              digiteam
-            </span>
+            <DigiteamLogo size={28} />
+            <span className="dt-header-brand-text">digiteam</span>
           </div>
 
-          {/* Nav */}
           <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
             <button
               onClick={() => router.push('/dashboard')}
               style={{
                 background: 'rgba(247,173,57,0.15)', color: '#f7ad39',
                 border: 'none', borderRadius: '6px',
-                fontSize: '14px', fontWeight: '500',
-                padding: '6px 14px',
+                fontSize: '14px', fontWeight: '500', padding: '6px 14px',
               }}
             >
               Projects
@@ -630,8 +767,7 @@ export default function Dashboard() {
               style={{
                 background: 'transparent', color: 'rgba(255,255,255,0.5)',
                 border: 'none', borderRadius: '6px',
-                fontSize: '14px', fontWeight: '500',
-                padding: '6px 14px',
+                fontSize: '14px', fontWeight: '500', padding: '6px 14px',
               }}
             >
               Admin
@@ -640,8 +776,7 @@ export default function Dashboard() {
 
           <div style={{ flex: 1 }} />
 
-          {/* Refresh + sign out */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {lastFetch && (
               <span style={{
                 fontSize: '13px', color: 'rgba(255,255,255,0.35)',
@@ -675,21 +810,14 @@ export default function Dashboard() {
         </header>
 
         {/* ── Main content ── */}
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '28px 24px' }}>
+        <main className="dt-main">
 
           {/* Page title */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            marginBottom: '24px',
-          }}>
-            <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)' }}>
-              Project overview
-            </h1>
+          <div className="dt-page-title">
+            <h1>Project overview</h1>
             <StatusLegend />
             {data && !loading && (
-              <span style={{
-                fontSize: '15px', color: 'var(--muted)', marginLeft: '8px',
-              }}>
+              <span style={{ fontSize: '15px', color: 'var(--muted)' }}>
                 {data.projects.length} projects
               </span>
             )}
@@ -708,12 +836,9 @@ export default function Dashboard() {
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
               }} />
-              <span style={{
-                fontSize: '15px', color: 'var(--muted)',
-              }}>
+              <span style={{ fontSize: '15px', color: 'var(--muted)' }}>
                 Fetching data...
               </span>
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           )}
 
@@ -730,30 +855,20 @@ export default function Dashboard() {
 
           {data && (
             <>
-              {/* ── Status summary strip ── */}
-              <div style={{
-                display: 'flex', gap: '12px', marginBottom: '24px',
-                flexWrap: 'wrap',
-              }}>
-                {/* All filter */}
+              {/* ── Status filter strip (horizontal scroll on mobile) ── */}
+              <div className="dt-status-strip">
                 <button
+                  className="dt-status-btn"
                   onClick={() => setFilter('all')}
                   style={{
                     background: filter === 'all' ? 'var(--dt-navy)' : 'var(--surface)',
                     color: filter === 'all' ? '#fff' : 'var(--text)',
-                    border: `1px solid ${filter === 'all' ? 'var(--dt-navy)' : 'var(--border)'}`,
-                    borderRadius: '10px', padding: '12px 20px',
-                    cursor: 'pointer', minWidth: '100px', textAlign: 'left',
+                    borderColor: filter === 'all' ? 'var(--dt-navy)' : 'var(--border)',
                   }}
                 >
-                  <div style={{ fontSize: '24px', fontWeight: '700', lineHeight: 1 }}>
-                    {data.projects.length}
-                  </div>
-                  <div style={{
-                    fontSize: '13px', marginTop: '4px',
-                    color: filter === 'all' ? 'rgba(255,255,255,0.6)' : 'var(--muted)',
-                    fontWeight: '500',
-                  }}>
+                  <div className="dt-status-num">{data.projects.length}</div>
+                  <div className="dt-status-label"
+                    style={{ color: filter === 'all' ? 'rgba(255,255,255,0.6)' : 'var(--muted)' }}>
                     All projects
                   </div>
                 </button>
@@ -765,35 +880,56 @@ export default function Dashboard() {
                   return (
                     <button
                       key={key}
+                      className="dt-status-btn"
                       onClick={() => setFilter(isActive ? 'all' : key)}
                       style={{
                         background: isActive ? cfg.bg : 'var(--surface)',
-                        border: `1px solid ${isActive ? cfg.dot : 'var(--border)'}`,
+                        borderColor: isActive ? cfg.dot : 'var(--border)',
                         borderLeft: `4px solid ${cfg.dot}`,
-                        borderRadius: '10px', padding: '12px 20px',
-                        cursor: 'pointer', minWidth: '100px', textAlign: 'left',
                         opacity: count === 0 ? 0.5 : 1,
                       }}
                     >
-                      <div style={{
-                        fontSize: '24px', fontWeight: '700', lineHeight: 1,
-                        color: cfg.dot,
-                      }}>
-                        {count}
-                      </div>
-                      <div style={{
-                        fontSize: '13px', marginTop: '4px', color: cfg.text,
-                        fontWeight: '500',
-                      }}>
-                        {cfg.label}
-                      </div>
+                      <div className="dt-status-num" style={{ color: cfg.dot }}>{count}</div>
+                      <div className="dt-status-label" style={{ color: cfg.text }}>{cfg.label}</div>
                     </button>
                   );
                 })}
+              </div>
 
+              {/* ── Assignee filter + last updated ── */}
+              <div className="dt-filter-bar">
+                {teamMembers.length > 0 && (
+                  <>
+                    <label style={{ fontSize: '14px', color: 'var(--muted)', fontWeight: '500' }}>
+                      Team member:
+                    </label>
+                    <select
+                      className="dt-assignee-select"
+                      value={assigneeFilter}
+                      onChange={e => setAssigneeFilter(e.target.value)}
+                    >
+                      <option value="all">All team members</option>
+                      {teamMembers.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                    {assigneeFilter !== 'all' && (
+                      <button
+                        onClick={() => setAssigneeFilter('all')}
+                        style={{
+                          background: 'none', border: '1px solid var(--border2)',
+                          borderRadius: '6px', color: 'var(--muted)',
+                          fontSize: '13px', padding: '4px 10px', cursor: 'pointer',
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </>
+                )}
+                <div style={{ flex: 1 }} />
                 {lastFetch && !loading && (
-                  <div style={{
-                    marginLeft: 'auto', alignSelf: 'center',
+                  <span style={{
                     fontSize: '13px', color: 'var(--muted)',
                     fontFamily: 'var(--mono)',
                   }}>
@@ -801,7 +937,7 @@ export default function Dashboard() {
                       month: 'short', day: 'numeric',
                       hour: '2-digit', minute: '2-digit',
                     })}
-                  </div>
+                  </span>
                 )}
               </div>
 

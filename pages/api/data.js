@@ -6,13 +6,14 @@ const ORG    = 'wearedigiteam';
 const REPO   = 'digiteam-dashboard';
 const BRANCH = 'main';
 const PATH   = 'mapping.json';
+const USER_PATH = 'user-mapping.json';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-async function getMapping() {
+async function getGHFile(path) {
   try {
     const res = await fetch(
-      `https://api.github.com/repos/${ORG}/${REPO}/contents/${PATH}?ref=${BRANCH}`,
+      `https://api.github.com/repos/${ORG}/${REPO}/contents/${path}?ref=${BRANCH}`,
       {
         headers: {
           'Authorization': `Bearer ${process.env.GITHUB_PAT}`,
@@ -27,6 +28,9 @@ async function getMapping() {
     return [];
   }
 }
+
+async function getMapping() { return getGHFile(PATH); }
+async function getUserMapping() { return getGHFile(USER_PATH); }
 
 function computeHealth({ github, userback }) {
   const ghBlocked    = github?.blocked?.length    || 0;
@@ -62,7 +66,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const mapping = await getMapping();
+    const [mapping, userMappingData] = await Promise.all([
+      getMapping(),
+      getUserMapping(),
+    ]);
 
     if (!mapping.length) {
       return res.status(200).json({
@@ -119,6 +126,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       projects: results,
+      userMapping: userMappingData,
       fetchedAt: new Date().toISOString(),
     });
   } catch (err) {
