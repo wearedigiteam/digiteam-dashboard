@@ -207,13 +207,22 @@ function ItemRow({ item, source }) {
 }
 
 // ── Section within a data column ─────────────────────────────────────────────
+const PREVIEW_COUNT = 3;
+
 function IssueSection({ title, items, color, bgColor, source, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [expanded, setExpanded] = useState(false);
   if (!items || items.length === 0) return null;
+
+  const visibleItems = open
+    ? (expanded ? items : items.slice(0, PREVIEW_COUNT))
+    : [];
+  const hasMore = items.length > PREVIEW_COUNT;
+
   return (
     <div style={{ marginBottom: '14px' }}>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); if (!open) setExpanded(false); }}
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           width: '100%', background: 'none', border: 'none',
@@ -240,9 +249,24 @@ function IssueSection({ title, items, color, bgColor, source, defaultOpen = true
       </button>
       {open && (
         <div style={{ paddingTop: '4px' }}>
-          {items.map((item, i) => (
+          {visibleItems.map((item, i) => (
             <ItemRow key={item.id || i} item={item} source={source} />
           ))}
+          {hasMore && (
+            <button
+              onClick={() => setExpanded(e => !e)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                width: '100%', background: 'none', border: 'none',
+                padding: '8px 0 4px', cursor: 'pointer',
+                fontSize: '13px', color: 'var(--orange)', fontWeight: '500',
+              }}
+            >
+              {expanded
+                ? `▲ Show fewer`
+                : `▼ Show ${items.length - PREVIEW_COUNT} more`}
+            </button>
+          )}
         </div>
       )}
     </div>
