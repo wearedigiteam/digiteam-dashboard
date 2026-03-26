@@ -108,6 +108,7 @@ export default function Admin() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [repoSearch, setRepoSearch] = useState('');
+  const [adminTab, setAdminTab] = useState('projects');
 
   // User mapping state
   const [userMapping, setUserMapping] = useState([]);
@@ -282,17 +283,45 @@ export default function Admin() {
 
         <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
 
-          <div style={{ marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
-              Project mapping
-            </h1>
-            <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6 }}>
-              Link GitHub repos to their Userback counterparts. Changes are saved to{' '}
-              <code style={{
-                color: 'var(--orange)', background: 'var(--surface2)',
-                padding: '2px 6px', borderRadius: '4px', fontSize: '14px',
-              }}>mapping.json</code> in your repo via the GitHub API.
-            </p>
+          {/* Page title */}
+          <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '20px' }}>
+            Admin
+          </h1>
+
+          {/* Tab bar */}
+          <div style={{
+            display: 'flex', gap: '0', marginBottom: '28px',
+            borderBottom: '2px solid var(--border)',
+          }}>
+            {[
+              { key: 'projects', label: 'Project mapping', count: mapping.length },
+              { key: 'team', label: 'Team members', count: userMapping.length },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setAdminTab(tab.key)}
+                style={{
+                  background: 'none', border: 'none',
+                  padding: '10px 20px',
+                  fontSize: '15px', fontWeight: '600',
+                  color: adminTab === tab.key ? 'var(--orange)' : 'var(--muted)',
+                  borderBottom: adminTab === tab.key ? '2px solid var(--orange)' : '2px solid transparent',
+                  marginBottom: '-2px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab.label}
+                <span style={{
+                  marginLeft: '8px', fontSize: '13px',
+                  background: adminTab === tab.key ? 'var(--orange)' : 'var(--surface2)',
+                  color: adminTab === tab.key ? '#fff' : 'var(--muted)',
+                  padding: '2px 8px', borderRadius: '10px',
+                }}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
           {loading && (
@@ -307,7 +336,7 @@ export default function Admin() {
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
               }} />
-              Loading repos and projects...
+              Loading...
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           )}
@@ -324,6 +353,16 @@ export default function Admin() {
 
           {!loading && (
             <>
+              {/* ═══ TAB: Project Mapping ═══ */}
+              {adminTab === 'projects' && (
+                <div>
+                  <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                    Link GitHub repos to their Userback counterparts. Changes are saved to{' '}
+                    <code style={{
+                      color: 'var(--orange)', background: 'var(--surface2)',
+                      padding: '2px 6px', borderRadius: '4px', fontSize: '14px',
+                    }}>mapping.json</code> in your repo via the GitHub API.
+                  </p>
               {/* Column headers */}
               <div style={{
                 display: 'grid',
@@ -438,42 +477,39 @@ export default function Admin() {
                 </span>
               </div>
 
-              {/* Userback reference list */}
-              <div style={{ marginTop: '40px' }}>
-                <div style={{
-                  fontSize: '13px', color: 'var(--muted)', fontWeight: '600',
-                  textTransform: 'uppercase', letterSpacing: '0.5px',
-                  marginBottom: '12px',
-                }}>
-                  Userback projects ({userbackProjects.length})
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {userbackProjects.map(p => (
-                    <div key={p.id} style={{
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '8px', padding: '6px 12px',
-                      fontSize: '13px', color: 'var(--muted2)',
+                  {/* Userback reference list */}
+                  <div style={{ marginTop: '40px' }}>
+                    <div style={{
+                      fontSize: '13px', color: 'var(--muted)', fontWeight: '600',
+                      textTransform: 'uppercase', letterSpacing: '0.5px',
+                      marginBottom: '12px',
                     }}>
-                      <span style={{ color: 'var(--orange)', fontWeight: '600' }}>{p.id}</span>
-                      {' '}{p.name}
+                      Userback projects ({userbackProjects.length})
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {userbackProjects.map(p => (
+                        <div key={p.id} style={{
+                          background: 'var(--surface)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px', padding: '6px 12px',
+                          fontSize: '13px', color: 'var(--muted2)',
+                        }}>
+                          <span style={{ color: 'var(--orange)', fontWeight: '600' }}>{p.id}</span>
+                          {' '}{p.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* ═══ User Mapping ═══ */}
-              <div style={{
-                marginTop: '48px', paddingTop: '32px',
-                borderTop: '2px solid var(--border)',
-              }}>
-                <h2 style={{ fontSize: '22px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
-                  Team member mapping
-                </h2>
-                <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-                  Link GitHub usernames to Userback members so the dashboard can show consistent names
-                  and filter by team member across both systems.
-                </p>
+              {/* ═══ TAB: Team Members ═══ */}
+              {adminTab === 'team' && (
+                <div>
+                  <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                    Link GitHub usernames to Userback members so the dashboard can show consistent names
+                    and filter by team member across both systems.
+                  </p>
 
                 {/* Column headers */}
                 <div style={{
@@ -632,6 +668,7 @@ export default function Admin() {
                   )}
                 </div>
               </div>
+              )}
             </>
           )}
         </main>
