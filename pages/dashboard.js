@@ -595,50 +595,83 @@ export default function Dashboard() {
     return userMap[key] || null;
   }
 
-  // Check if a project has items assigned to the filtered person
-  function projectMatchesAssignee(project, displayName) {
-    if (!displayName || displayName === 'all') return true;
+  // ── Item-level assignee filtering ──
+  // Returns a copy of the project with only items assigned to the selected person.
+  // Hides projects entirely if they have zero matching items.
+  function filterProjectByAssignee(project, displayName) {
+    if (!displayName || displayName === 'all') return project;
 
-    // Find which GitHub logins and Userback userIds map to this name
+    // Find which GitHub logins and Userback names map to this person
     const ghLogins = new Set();
-    const ubUserIds = new Set();
+    const ubNames = new Set();
     (data?.userMapping || []).forEach(u => {
       if (u.displayName === displayName) {
         if (u.githubLogin) ghLogins.add(u.githubLogin.toLowerCase());
-        if (u.userbackUserId) ubUserIds.add(u.userbackUserId);
+        ubNames.add(u.displayName);
       }
     });
 
-    // Check GitHub items
-    const ghSources = [
-      ...(project.github?.blocked || []),
-      ...(project.github?.inProgress || []),
-      ...(project.github?.stale || []),
-      ...(project.github?.open || []),
-    ];
-    for (const item of ghSources) {
-      if (item.assignees?.some(a => ghLogins.has(a.toLowerCase()))) return true;
-    }
+    const filterGH = items => (items || []).filter(item =>
+      item.assignees?.some(a => ghLogins.has(a.toLowerCase()))
+    );
 
-    // Check Userback items — assignee field is the resolved name or numeric ID
-    const ubSources = [
-      ...(project.userback?.open || []),
-      ...(project.userback?.inProgress || []),
-      ...(project.userback?.onHold || []),
-    ];
-    for (const item of ubSources) {
-      // Check by name match (from member resolution)
-      if (item.assignee === displayName) return true;
-    }
+    const filterUB = items => (items || []).filter(item =>
+      ubNames.has(item.assignee)
+    );
 
-    return false;
+    const filteredGithub = project.github ? (() => {
+      const blocked = filterGH(project.github.blocked);
+      const inProgress = filterGH(project.github.inProgress);
+      const stale = filterGH(project.github.stale);
+      const open = filterGH(project.github.open);
+      const closedThisWeek = filterGH(project.github.closedThisWeek);
+      return {
+        ...project.github,
+        blocked, inProgress, stale, open, closedThisWeek,
+        totalOpen: blocked.length + inProgress.length + stale.length + open.length,
+      };
+    })() : null;
+
+    const filteredUserback = project.userback ? (() => {
+      const open = filterUB(project.userback.open);
+      const inProgress = filterUB(project.userback.inProgress);
+      const onHold = filterUB(project.userback.onHold);
+      const resolvedThisWeek = filterUB(project.userback.resolvedThisWeek);
+      return {
+        ...project.userback,
+        open, inProgress, onHold, resolvedThisWeek,
+        total: open.length + inProgress.length + onHold.length,
+      };
+    })() : null;
+
+    // Recalculate totals
+    const ghTotal = filteredGithub
+      ? (filteredGithub.blocked.length + filteredGithub.inProgress.length +
+         filteredGithub.stale.length + filteredGithub.open.length)
+      : 0;
+    const ubTotal = filteredUserback
+      ? (filteredUserback.open.length + filteredUserback.inProgress.length +
+         filteredUserback.onHold.length)
+      : 0;
+
+    // If no items match at all, return null to hide this project
+    const anyItems = ghTotal + ubTotal +
+      (filteredGithub?.closedThisWeek?.length || 0) +
+      (filteredUserback?.resolvedThisWeek?.length || 0);
+    if (anyItems === 0) return null;
+
+    return {
+      ...project,
+      github: filteredGithub,
+      userback: filteredUserback,
+      totalActive: ghTotal + ubTotal,
+    };
   }
 
-  const filteredProjects = data?.projects?.filter(p => {
-    const statusMatch = filter === 'all' || p.health === filter;
-    const assigneeMatch = projectMatchesAssignee(p, assigneeFilter);
-    return statusMatch && assigneeMatch;
-  }) || [];
+  const filteredProjects = (data?.projects || [])
+    .filter(p => filter === 'all' || p.health === filter)
+    .map(p => filterProjectByAssignee(p, assigneeFilter))
+    .filter(Boolean); // Remove nulls (projects with zero matching items)
 
   // Sorted list of team members for the dropdown
   const teamMembers = [...displayNames].sort();
