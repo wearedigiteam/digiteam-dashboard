@@ -28,12 +28,14 @@ export default async function handler(req, res) {
       page++;
     }
 
-    const members = allMembers.map(m => ({
-      id: m.id,
-      userId: m.userId,
-      name: m.name || m.email,
-      email: m.email,
-    })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const members = allMembers
+      .filter(m => !m.isDisabled)
+      .map(m => ({
+        id: m.id,
+        userId: m.userId,
+        name: m.name || m.email,
+        email: m.email,
+      })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     return res.status(200).json({ members });
   } catch (err) {

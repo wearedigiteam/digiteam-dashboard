@@ -124,6 +124,9 @@ export default async function handler(req, res) {
       };
     });
 
+    // Sort alphabetically
+    results.sort((a, b) => a.name.localeCompare(b.name));
+
     return res.status(200).json({
       projects: results,
       userMapping: userMappingData,

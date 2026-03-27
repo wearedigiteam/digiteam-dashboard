@@ -17,13 +17,15 @@ export default async function handler(req, res) {
       octokit.rest.repos.listForOrg,
       { org: ORG, type: 'all', per_page: 100, sort: 'pushed' }
     )) {
-      repos.push(...response.data.map(r => ({
-        name: r.name,
-        fullName: r.full_name,
-        url: r.html_url,
-        pushedAt: r.pushed_at,
-        private: r.private,
-      })));
+      repos.push(...response.data
+        .filter(r => !r.archived)
+        .map(r => ({
+          name: r.name,
+          fullName: r.full_name,
+          url: r.html_url,
+          pushedAt: r.pushed_at,
+          private: r.private,
+        })));
     }
 
     // Sort alphabetically
