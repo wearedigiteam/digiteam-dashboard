@@ -432,18 +432,14 @@ export default function Dashboard() {
     router.push('/');
   }
 
-  // ── User mapping ──
-  const displayNames = new Set();
-  (data?.userMapping || []).forEach(u => {
-    if (u.displayName && u.userbackUserId) displayNames.add(u.displayName);
-  });
+  // ── Team members (from Userback API directly) ──
+  const teamMembers = (data?.teamMembers || []).map(m => m.name);
 
   // ── Assignee filtering ──
   function filterByAssignee(project, displayName) {
     if (!displayName || displayName === 'all') return project;
-    const ubNames = new Set();
-    (data?.userMapping || []).forEach(u => { if (u.displayName === displayName) ubNames.add(u.displayName); });
-    const filterItems = items => (items || []).filter(item => ubNames.has(item.assignee));
+
+    const filterItems = items => (items || []).filter(item => item.assignee === displayName);
     const d = project.data;
     if (!d) return null;
     const open = filterItems(d.open);
@@ -463,7 +459,7 @@ export default function Dashboard() {
     .map(p => filterByAssignee(p, assigneeFilter))
     .filter(Boolean);
 
-  const teamMembers = [...displayNames].sort();
+  // teamMembers already defined above from API
 
   // ── Aging summary stats ──
   const totalAging30 = (data?.projects || []).reduce((n, p) => {
@@ -487,7 +483,6 @@ export default function Dashboard() {
           </div>
           <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
             <button onClick={() => router.push('/dashboard')} style={{ background: 'rgba(247,173,57,0.15)', color: '#f7ad39', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Dashboard</button>
-            <button onClick={() => router.push('/admin')} style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Admin</button>
           </nav>
           <div style={{ flex: 1 }} />
           <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

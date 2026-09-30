@@ -25,30 +25,22 @@ function DigiteamLogo({ size = 48 }) {
 
 export default function Login() {
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setError(''); setLoading(true);
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
-      if (res.ok) {
-        router.push('/dashboard');
-      } else {
-        setError('Incorrect password.');
-        setLoading(false);
-      }
-    } catch {
-      setError('Something went wrong. Try again.');
-      setLoading(false);
-    }
+      if (res.ok) { router.push('/dashboard'); }
+      else { setError('Incorrect password.'); setLoading(false); }
+    } catch { setError('Something went wrong.'); setLoading(false); }
   }
 
   return (
@@ -58,71 +50,30 @@ export default function Login() {
         <meta name="robots" content="noindex,nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg)', padding: '24px',
-      }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: '24px' }}>
         <div style={{ width: '100%', maxWidth: '400px' }}>
           <div style={{ marginBottom: '48px', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
               <DigiteamLogo size={44} />
-              <span style={{ fontSize: '26px', fontWeight: '700', letterSpacing: '-0.5px', color: 'var(--text)' }}>
-                digiteam
-              </span>
+              <span style={{ fontSize: '26px', fontWeight: '700', letterSpacing: '-0.5px', color: 'var(--text)' }}>digiteam</span>
             </div>
-            <div style={{ fontSize: '14px', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>
-              Userback Dashboard
-            </div>
+            <div style={{ fontSize: '14px', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>Userback Dashboard</div>
           </div>
-
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: '12px', padding: '36px',
-          }}>
-            <div style={{
-              fontSize: '14px', color: 'var(--muted)', letterSpacing: '1px',
-              textTransform: 'uppercase', marginBottom: '24px', fontWeight: '600',
-            }}>
-              Sign in
-            </div>
-
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '36px' }}>
+            <div style={{ fontSize: '14px', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', fontWeight: '600' }}>Sign in</div>
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '18px' }}>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  autoFocus
-                  style={{
-                    width: '100%', background: 'var(--surface2)',
-                    border: `1px solid ${error ? 'var(--red)' : 'var(--border2)'}`,
-                    borderRadius: '8px', color: 'var(--text)',
-                    fontSize: '16px', padding: '14px 16px', outline: 'none',
-                  }}
-                />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" autoFocus
+                  style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: '8px', color: 'var(--text)', fontSize: '16px', padding: '14px 16px', outline: 'none' }} />
               </div>
               {error && <div style={{ fontSize: '14px', color: 'var(--red)', marginBottom: '16px' }}>{error}</div>}
-              <button
-                type="submit"
-                disabled={loading || !password}
-                style={{
-                  width: '100%',
-                  background: loading || !password ? 'var(--border2)' : 'var(--orange)',
-                  color: '#fff', border: 'none', borderRadius: '8px',
-                  fontWeight: '600', fontSize: '15px', letterSpacing: '0.5px',
-                  textTransform: 'uppercase', padding: '14px',
-                  cursor: loading || !password ? 'not-allowed' : 'pointer',
-                }}
-              >
+              <button type="submit" disabled={loading || !password}
+                style={{ width: '100%', background: loading || !password ? 'var(--border2)' : 'var(--orange)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', textTransform: 'uppercase', padding: '14px', cursor: loading || !password ? 'not-allowed' : 'pointer' }}>
                 {loading ? 'Authenticating...' : 'Enter'}
               </button>
             </form>
           </div>
-          <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>
-            Internal use only
-          </div>
+          <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--muted)' }}>Internal use only</div>
         </div>
       </div>
     </>

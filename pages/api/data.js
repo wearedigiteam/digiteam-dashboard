@@ -1,6 +1,5 @@
 import { getTokenFromRequest, verifyToken } from '../../lib/auth';
-import { readConfig } from '../../lib/config';
-import { fetchProjectTasks, computeHealth } from '../../lib/userback';
+import { fetchAllProjects, fetchProjectTasks, computeHealth, getTeamMembers } from '../../lib/userback';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -11,29 +10,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [{ data: mapping }, { data: userMapping }] = await Promise.all([
-      readConfig('projects.json'),
-      readConfig('users.json'),
-    ]);
+    // Auto-discover all non-archived Userback projects
+    const projects = await fetchAllProjects();
 
-    if (!mapping.length) {
-      return res.status(200).json({
-        projects: [],
-        userMapping,
-        fetchedAt: new Date().toISOString(),
-        notice: 'No projects configured. Visit Admin to add Userback projects.',
-      });
-    }
-
-    // Fetch Userback data sequentially
+    // Fetch data for each project sequentially
     const results = [];
-    for (const project of mapping) {
-      const data = await fetchProjectTasks(String(project.userbackId));
+    for (const project of projects) {
+      const data = await fetchProjectTasks(project.id);
       const health = computeHealth(data);
 
       results.push({
         name: project.name,
-        userbackId: project.userbackId,
+        userbackId: project.id,
         health,
         totalActive: data?.total || 0,
         data,
@@ -42,11 +30,15 @@ export default async function handler(req, res) {
       await delay(200);
     }
 
+    // Sort alphabetically
     results.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Team members (auto-populated from Userback)
+    const teamMembers = getTeamMembers();
 
     return res.status(200).json({
       projects: results,
-      userMapping,
+      teamMembers,
       fetchedAt: new Date().toISOString(),
     });
   } catch (err) {
