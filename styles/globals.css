@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Digiteam brand */
+  --dt-orange:   #f05a27;
+  --dt-gold:     #f7ad39;
+  --dt-navy:     #1a1a2e;
+
+  /* Theme A: Warm Professional */
+  --bg:          #faf8f5;
+  --surface:     #ffffff;
+  --surface2:    #f5f2ed;
+  --border:      #e8e4de;
+  --border2:     #d9d4cb;
+  --orange:      #f05a27;
+  --amber:       #f7ad39;
+  --text:        #1a1a2e;
+  --text2:       #2d2d3f;
+  --muted:       #7a7a8a;
+  --muted2:      #9a9aa6;
+  --red:         #c02020;
+  --blue:        #2563eb;
+  --green:       #0f8a4f;
+  --font:        'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:        'DM Mono', 'SF Mono', 'Consolas', monospace;
+
+  /* Status colours */
+  --status-active-bg:    #e1f5ee;
+  --status-active-text:  #0f6e56;
+  --status-active-dot:   #1d9e75;
+  --status-inflight-bg:  #e6f1fb;
+  --status-inflight-text:#185fa5;
+  --status-inflight-dot: #378add;
+  --status-blocked-bg:   #fcebeb;
+  --status-blocked-text: #a32d2d;
+  --status-blocked-dot:  #e24b4a;
+  --status-stale-bg:     #f1efe8;
+  --status-stale-text:   #5f5e5a;
+  --status-stale-dot:    #888780;
+  --status-clear-bg:     #f5f2ed;
+  --status-clear-text:   #9a9aa6;
+  --status-clear-dot:    #c0c0c0;
+
+  /* Utilisation bar colours */
+  --util-ok:     #1d9e75;
+  --util-warn:   #f7ad39;
+  --util-over:   #e24b4a;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+input, select, textarea {
+  font-family: var(--font);
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ═══ Dashboard layout ═══ */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.dt-header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--dt-navy);
+  padding: 0 24px;
+  display: flex; align-items: center; gap: 16px; height: 60px;
+}
+.dt-header-brand-text { font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+.dt-main { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+.dt-page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.dt-page-title h1 { font-size: 24px; font-weight: 600; color: var(--text); }
+
+.dt-status-strip {
+  display: flex; gap: 10px; margin-bottom: 20px;
+  align-items: center;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.dt-status-strip::-webkit-scrollbar { display: none; }
+.dt-status-btn {
+  border-radius: 10px; padding: 10px 14px;
+  cursor: pointer; min-width: 80px; text-align: left;
+  flex-shrink: 0; border: 1px solid var(--border);
+}
+.dt-status-num { font-size: 20px; font-weight: 700; line-height: 1; }
+.dt-status-label { font-size: 11px; margin-top: 3px; font-weight: 500; white-space: nowrap; }
+
+.dt-assignee-select {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  padding: 7px 10px; outline: none; min-width: 140px;
+}
+
+.dt-card-header {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; background: none; border: none;
+  padding: 16px 20px; cursor: pointer;
+}
+.dt-card-meta {
+  display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.dt-card-columns {
+  display: flex; gap: 14px; padding: 16px 20px;
+}
+.dt-card-columns > div { flex: 1; min-width: 0; }
+
+@media (max-width: 768px) {
+  .dt-header { padding: 0 12px; gap: 8px; height: 52px; }
+  .dt-header-brand-text { font-size: 15px; }
+  .dt-header nav { margin-left: 8px !important; }
+  .dt-header nav button { font-size: 13px !important; padding: 5px 10px !important; }
+  .dt-header .dt-header-actions { gap: 6px !important; }
+  .dt-header .dt-header-actions button { font-size: 12px !important; padding: 4px 8px !important; }
+
+  .dt-main { padding: 16px 12px; }
+  .dt-page-title h1 { font-size: 20px; }
+
+  .dt-status-btn { min-width: 65px; padding: 8px 10px; }
+  .dt-status-num { font-size: 18px; }
+  .dt-status-label { font-size: 10px; }
+
+  .dt-card-header { flex-wrap: wrap; padding: 12px 14px; gap: 8px; }
+  .dt-card-meta { width: 100%; justify-content: flex-start; }
+  .dt-card-columns { flex-direction: column; padding: 12px 14px; }
+
+  .dt-assignee-select { min-width: 120px; font-size: 13px; }
+}

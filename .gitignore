@@ -1,6 +1,5 @@
-.env.local
-.env*.local
-.next/
 node_modules/
-out/
-npm-debug.log*
+.next/
+.env
+.env.local
+.vercel
