@@ -684,13 +684,6 @@ function TableRow({ item, index }) {
       )}
     </>
   );
-        </table>
-      </div>
-      <div style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
-        {sorted.length} ticket{sorted.length !== 1 ? 's' : ''}
-      </div>
-    </div>
-  );
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
