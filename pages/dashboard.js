@@ -601,6 +601,13 @@ export default function Dashboard() {
   const [projectFilter, setProjectState]   = useState('all');
   const [viewMode, setViewModeState]       = useState('cards');
 
+  // AI assistant
+  const [aiOpen, setAiOpen]         = useState(false);
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiReply, setAiReply]       = useState('');
+  const [aiLoading, setAiLoading]   = useState(false);
+  const [aiError, setAiError]       = useState(null);
+
   // Read query params on mount
   useEffect(() => {
     if (!router.isReady) return;
@@ -644,6 +651,40 @@ export default function Dashboard() {
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
     router.push('/');
+  }
+
+  async function askAI(e) {
+    if (e) e.preventDefault();
+    if (!aiQuestion.trim() || aiLoading) return;
+    setAiLoading(true); setAiError(null); setAiReply('');
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: aiQuestion, ticketData: data }),
+      });
+      if (!res.ok) throw new Error('Failed to get response');
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setAiReply(json.reply);
+    } catch (err) { setAiError(err.message); }
+    finally { setAiLoading(false); }
+  }
+
+  async function askQuickPrompt(prompt) {
+    setAiLoading(true); setAiError(null); setAiReply('');
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: prompt, ticketData: data }),
+      });
+      if (!res.ok) throw new Error('Failed to get response');
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setAiReply(json.reply);
+    } catch (err) { setAiError(err.message); }
+    finally { setAiLoading(false); }
   }
 
   const teamMembers = (data?.teamMembers || []).map(m => m.name);
@@ -852,6 +893,117 @@ export default function Dashboard() {
                     {assigneeFilter !== 'all' && (
                       <button onClick={() => setAssigneeFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── AI Assistant ── */}
+              <div style={{ marginBottom: '20px' }}>
+                {!aiOpen ? (
+                  <button onClick={() => setAiOpen(true)} style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: '10px', padding: '10px 18px', cursor: 'pointer',
+                    fontSize: '14px', color: 'var(--muted)', fontWeight: '500',
+                    width: '100%',
+                  }}>
+                    <span style={{ fontSize: '18px' }}>✦</span>
+                    Ask AI about your tickets...
+                  </button>
+                ) : (
+                  <div style={{
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: '10px', overflow: 'hidden',
+                  }}>
+                    {/* Header */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                    }}>
+                      <span style={{ fontSize: '18px' }}>✦</span>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', flex: 1 }}>AI Assistant</span>
+                      <button onClick={() => setAiOpen(false)} style={{
+                        background: 'none', border: 'none', color: 'var(--muted)',
+                        fontSize: '16px', cursor: 'pointer', padding: '0 4px',
+                      }}>✕</button>
+                    </div>
+
+                    {/* Quick prompts */}
+                    <div style={{
+                      display: 'flex', gap: '8px', padding: '12px 16px',
+                      flexWrap: 'wrap', borderBottom: aiReply || aiLoading ? '1px solid var(--border)' : 'none',
+                    }}>
+                      {[
+                        'What should I work on next?',
+                        'I have 2 hours, what can I tackle?',
+                        'What tickets are at risk of going stale?',
+                        'Summarize the state of all projects',
+                        'What are the quick wins right now?',
+                      ].map(prompt => (
+                        <button key={prompt} onClick={() => { setAiQuestion(prompt); askQuickPrompt(prompt); }} style={{
+                          background: 'var(--surface2)', border: '1px solid var(--border)',
+                          borderRadius: '20px', padding: '5px 14px', cursor: 'pointer',
+                          fontSize: '13px', color: 'var(--text2)', whiteSpace: 'nowrap',
+                        }}>{prompt}</button>
+                      ))}
+                    </div>
+
+                    {/* Response area */}
+                    {aiLoading && (
+                      <div style={{
+                        padding: '20px 16px', display: 'flex', alignItems: 'center', gap: '10px',
+                        color: 'var(--muted)', fontSize: '14px',
+                      }}>
+                        <div style={{
+                          width: '16px', height: '16px',
+                          border: '2px solid var(--border)', borderTopColor: 'var(--orange)',
+                          borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+                        }} />
+                        Thinking...
+                      </div>
+                    )}
+
+                    {aiError && (
+                      <div style={{ padding: '16px', color: 'var(--red)', fontSize: '14px' }}>
+                        Error: {aiError}
+                      </div>
+                    )}
+
+                    {aiReply && !aiLoading && (
+                      <div style={{
+                        padding: '16px', fontSize: '14px', color: 'var(--text)',
+                        lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                        maxHeight: '400px', overflowY: 'auto',
+                      }}>
+                        {aiReply}
+                      </div>
+                    )}
+
+                    {/* Input */}
+                    <form onSubmit={askAI} style={{
+                      display: 'flex', gap: '8px', padding: '12px 16px',
+                      borderTop: '1px solid var(--border)',
+                    }}>
+                      <input
+                        value={aiQuestion}
+                        onChange={e => setAiQuestion(e.target.value)}
+                        placeholder="Ask about your tickets..."
+                        style={{
+                          flex: 1, background: 'var(--surface2)',
+                          border: '1px solid var(--border2)', borderRadius: '8px',
+                          color: 'var(--text)', fontSize: '15px',
+                          padding: '10px 14px', outline: 'none',
+                        }}
+                      />
+                      <button type="submit" className="dt-ai-submit" disabled={aiLoading || !aiQuestion.trim()} style={{
+                        background: aiLoading || !aiQuestion.trim() ? 'var(--border2)' : 'var(--orange)',
+                        color: '#fff', border: 'none', borderRadius: '8px',
+                        padding: '10px 20px', fontSize: '14px', fontWeight: '600',
+                        cursor: aiLoading || !aiQuestion.trim() ? 'not-allowed' : 'pointer',
+                      }}>
+                        {aiLoading ? '...' : 'Ask'}
+                      </button>
+                    </form>
                   </div>
                 )}
               </div>
