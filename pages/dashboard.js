@@ -189,6 +189,126 @@ function sortByUrgency(items) {
   });
 }
 
+// ── Solve panel (wrench button + AI solution + post to Userback) ─────────────
+function SolvePanel({ item }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [solution, setSolution] = useState('');
+  const [error, setError] = useState(null);
+  const [posting, setPosting] = useState(false);
+  const [posted, setPosted] = useState(false);
+
+  async function handleSolve() {
+    if (open && solution) { setOpen(false); return; } // Toggle close
+    setOpen(true);
+    if (solution) return; // Already loaded
+    setLoading(true); setError(null);
+    try {
+      // Step 1: Fetch full issue detail from Userback
+      const detailRes = await fetch(`/api/issue-detail?id=${item.id}`);
+      const detailJson = await detailRes.json();
+      if (detailJson.error) throw new Error(detailJson.error);
+
+      // Step 2: Send to Claude for a solution
+      const solveRes = await fetch('/api/issue-solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feedback: detailJson.feedback,
+          comments: detailJson.comments,
+        }),
+      });
+      const solveJson = await solveRes.json();
+      if (solveJson.error) throw new Error(solveJson.error);
+      setSolution(solveJson.solution);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }
+
+  async function handlePost() {
+    if (!solution.trim()) return;
+    setPosting(true); setError(null);
+    try {
+      const res = await fetch('/api/issue-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedbackId: item.id, comment: solution }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setPosted(true);
+    } catch (err) { setError(err.message); }
+    finally { setPosting(false); }
+  }
+
+  return (
+    <>
+      <button onClick={handleSolve} title="Help me fix this issue" style={{
+        background: open ? 'var(--orange)' : 'var(--surface2)',
+        border: `1px solid ${open ? 'var(--orange)' : 'var(--border)'}`,
+        borderRadius: '6px', padding: '5px 8px', cursor: 'pointer',
+        fontSize: '14px', lineHeight: 1, flexShrink: 0,
+        color: open ? '#fff' : 'var(--muted)',
+      }}>🔧</button>
+
+      {open && (
+        <div style={{
+          gridColumn: '1 / -1', width: '100%',
+          background: 'var(--surface2)', border: '1px solid var(--border)',
+          borderRadius: '8px', padding: '14px', marginTop: '6px',
+        }}>
+          {loading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--muted)', fontSize: '14px' }}>
+              <div style={{ width: '16px', height: '16px', border: '2px solid var(--border)', borderTopColor: 'var(--orange)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              Analysing issue and generating solution...
+            </div>
+          )}
+
+          {error && (
+            <div style={{ fontSize: '14px', color: 'var(--red)', marginBottom: '8px' }}>Error: {error}</div>
+          )}
+
+          {solution && !loading && (
+            <>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                AI Suggestion {posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
+              </div>
+              <textarea
+                value={solution}
+                onChange={e => setSolution(e.target.value)}
+                disabled={posted}
+                style={{
+                  width: '100%', minHeight: '180px', background: 'var(--surface)',
+                  border: '1px solid var(--border)', borderRadius: '6px',
+                  color: 'var(--text)', fontSize: '14px', lineHeight: 1.6,
+                  padding: '12px', resize: 'vertical', outline: 'none',
+                  fontFamily: 'var(--font)',
+                  opacity: posted ? 0.7 : 1,
+                }}
+              />
+              {!posted && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
+                  <button onClick={handlePost} disabled={posting} style={{
+                    background: posting ? 'var(--border2)' : 'var(--orange)',
+                    color: '#fff', border: 'none', borderRadius: '6px',
+                    padding: '8px 16px', fontSize: '13px', fontWeight: '600',
+                    cursor: posting ? 'not-allowed' : 'pointer',
+                  }}>
+                    {posting ? 'Posting...' : 'Post to Userback'}
+                  </button>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                    Will be posted as [AI Suggestion]
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Ticket row ───────────────────────────────────────────────────────────────
 const PREVIEW_COUNT = 3;
 
@@ -260,6 +380,7 @@ function TicketRow({ item, showProject }) {
             borderRadius: '4px', whiteSpace: 'nowrap', minWidth: '55px', textAlign: 'right',
           }}>{dateLabel}</span>
         )}
+        <SolvePanel item={item} />
       </div>
     </div>
   );
@@ -481,6 +602,7 @@ function TicketTable({ projects }) {
               <th style={thStyle('priority')} onClick={() => handleSort('priority')}>Priority{arrow('priority')}</th>
               <th style={thStyle('type')} onClick={() => handleSort('type')}>Type{arrow('type')}</th>
               <th style={thStyle('modified')} onClick={() => handleSort('modified')}>Modified{arrow('modified')}</th>
+              <th style={{ ...thStyle('_solve'), width: '40px', cursor: 'default' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -574,6 +696,11 @@ function TicketTable({ projects }) {
                         borderRadius: '4px',
                       }}>{dateLabel}</span>
                     )}
+                  </td>
+
+                  {/* Solve */}
+                  <td style={{ padding: '6px 8px' }}>
+                    <SolvePanel item={item} />
                   </td>
                 </tr>
               );
