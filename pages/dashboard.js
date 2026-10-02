@@ -203,52 +203,54 @@ function TicketRow({ item, showProject }) {
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: '10px',
-      padding: '8px 0', borderBottom: '1px solid var(--border)',
+      display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '7px 0', borderBottom: '1px solid var(--border)',
     }}>
       {item.thumbnail && (
         <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
           <img src={item.thumbnail} alt="" style={{
-            width: '100px', height: 'auto', objectFit: 'contain', borderRadius: '4px',
+            width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px',
             border: '1px solid var(--border)', background: 'var(--surface2)',
           }} onError={e => { e.target.style.display = 'none'; }} />
         </a>
       )}
+
+      {/* Title — takes available space */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {item.url ? (
-            <a href={item.url} target="_blank" rel="noreferrer" style={{
-              fontSize: '15px', color: 'var(--text)', lineHeight: '1.4',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              textDecoration: 'none', flex: 1, minWidth: 0,
-            }} title={item.title}>{item.title}</a>
-          ) : (
-            <span style={{
-              fontSize: '15px', color: 'var(--text)', lineHeight: '1.4',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              flex: 1, minWidth: 0,
-            }} title={item.title}>{item.title}</span>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
-          {dateLabel && (
-            <span style={{
-              fontSize: '12px', fontFamily: 'var(--mono)',
-              color: agingStyle.color, background: agingStyle.bg,
-              padding: aging !== 'ok' ? '1px 6px' : '0',
-              borderRadius: '4px', whiteSpace: 'nowrap',
-            }}>{dateLabel}</span>
-          )}
-          <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
-          {showProject && item._projectName && (
-            <span style={{ fontSize: '11px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 6px', borderRadius: '4px' }}>
-              {item._projectName}
-            </span>
-          )}
-          {assigneeLabel && <span style={{ fontSize: '12px', color: 'var(--muted2)' }}>{assigneeLabel}</span>}
-          <PriorityBadge priority={item.priority} color={item.priorityColor} />
-          <TypeTag type={item.feedbackType} />
-        </div>
+        {item.url ? (
+          <a href={item.url} target="_blank" rel="noreferrer" style={{
+            fontSize: '14px', color: 'var(--text)', lineHeight: '1.3',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            textDecoration: 'none', display: 'block',
+          }} title={item.title}>{item.title}</a>
+        ) : (
+          <span style={{
+            fontSize: '14px', color: 'var(--text)', lineHeight: '1.3',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            display: 'block',
+          }} title={item.title}>{item.title}</span>
+        )}
+      </div>
+
+      {/* Metadata — right-aligned, single row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        {showProject && item._projectName && (
+          <span style={{ fontSize: '11px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+            {item._projectName}
+          </span>
+        )}
+        {assigneeLabel && <span style={{ fontSize: '12px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{assigneeLabel}</span>}
+        <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
+        <PriorityBadge priority={item.priority} color={item.priorityColor} />
+        <TypeTag type={item.feedbackType} />
+        {dateLabel && (
+          <span style={{
+            fontSize: '12px', fontFamily: 'var(--mono)',
+            color: agingStyle.color, background: agingStyle.bg,
+            padding: aging !== 'ok' ? '1px 6px' : '0',
+            borderRadius: '4px', whiteSpace: 'nowrap', minWidth: '55px', textAlign: 'right',
+          }}>{dateLabel}</span>
+        )}
       </div>
     </div>
   );
@@ -318,7 +320,7 @@ function NeedsAttentionPanel({ projects }) {
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderLeft: '4px solid #e53935', borderRadius: '10px',
-      padding: '20px', marginBottom: '20px',
+      padding: '20px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Needs attention</span>
@@ -344,7 +346,7 @@ function ProjectCard({ project }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: '10px', marginBottom: '14px', overflow: 'hidden',
+      borderRadius: '10px', overflow: 'hidden',
     }}>
       <button className="dt-card-header" onClick={() => setExpanded(e => !e)}
         style={{ borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
@@ -370,7 +372,7 @@ function ProjectCard({ project }) {
         </div>
       </button>
       {expanded && d && (
-        <div style={{ padding: '16px 20px' }}>
+        <div style={{ padding: '12px 16px' }}>
           {d.error ? (
             <div style={{ fontSize: '14px', color: 'var(--red)', fontFamily: 'var(--mono)' }}>Error: {d.error}</div>
           ) : (d.total === 0 && (!d.resolvedThisWeek || d.resolvedThisWeek.length === 0)) ? (
@@ -631,16 +633,22 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Needs Attention — only show when not filtering to a specific status */}
-              {filter === 'all' && <NeedsAttentionPanel projects={filteredProjects} />}
+              <div className="dt-project-grid">
+                {/* Needs Attention — spans full width, only on "all" */}
+                {filter === 'all' && (
+                  <div className="dt-needs-attention">
+                    <NeedsAttentionPanel projects={filteredProjects} />
+                  </div>
+                )}
 
-              {filteredProjects.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                  No tickets match this filter
-                </div>
-              ) : (
-                filteredProjects.map(project => <ProjectCard key={project.name} project={project} />)
-              )}
+                {filteredProjects.length === 0 ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    No tickets match this filter
+                  </div>
+                ) : (
+                  filteredProjects.map(project => <ProjectCard key={project.name} project={project} />)
+                )}
+              </div>
             </>
           )}
         </main>
