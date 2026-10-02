@@ -346,7 +346,7 @@ function ProjectCard({ project }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: '10px', overflow: 'hidden',
+      borderRadius: '10px', marginBottom: '14px', overflow: 'hidden',
     }}>
       <button className="dt-card-header" onClick={() => setExpanded(e => !e)}
         style={{ borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
@@ -391,6 +391,183 @@ function ProjectCard({ project }) {
   );
 }
 
+// ── Table view ───────────────────────────────────────────────────────────────
+function TicketTable({ projects }) {
+  const [sortCol, setSortCol] = useState('modified');
+  const [sortDir, setSortDir] = useState('asc'); // asc = oldest first for dates
+
+  // Flatten all tickets from all projects
+  const allRows = [];
+  for (const p of projects) {
+    const d = p.data;
+    if (!d) continue;
+    const tag = item => ({ ...item, _projectName: p.name });
+    (d.inProgress || []).forEach(i => allRows.push(tag(i)));
+    (d.onHold || []).forEach(i => allRows.push(tag(i)));
+    (d.open || []).forEach(i => allRows.push(tag(i)));
+    (d.resolvedThisWeek || []).forEach(i => allRows.push(tag(i)));
+  }
+
+  function handleSort(col) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir(col === 'modified' ? 'asc' : 'desc');
+    }
+  }
+
+  const sorted = [...allRows].sort((a, b) => {
+    let cmp = 0;
+    switch (sortCol) {
+      case 'project':  cmp = (a._projectName || '').localeCompare(b._projectName || ''); break;
+      case 'title':    cmp = (a.title || '').localeCompare(b.title || ''); break;
+      case 'assignee': cmp = (a.assignee || 'zzz').localeCompare(b.assignee || 'zzz'); break;
+      case 'workflow': cmp = (a.workflowName || '').localeCompare(b.workflowName || ''); break;
+      case 'priority': cmp = (b.priorityLevel || 0) - (a.priorityLevel || 0); break;
+      case 'type':     cmp = (a.feedbackType || '').localeCompare(b.feedbackType || ''); break;
+      case 'modified': {
+        const da = new Date(a.updatedAt || a.createdAt || 0);
+        const db = new Date(b.updatedAt || b.createdAt || 0);
+        cmp = da - db;
+        break;
+      }
+    }
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
+
+  const thStyle = (col) => ({
+    padding: '8px 10px', textAlign: 'left', cursor: 'pointer',
+    fontSize: '12px', fontWeight: '600', textTransform: 'uppercase',
+    letterSpacing: '0.5px', color: sortCol === col ? 'var(--orange)' : 'var(--muted)',
+    borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap',
+    userSelect: 'none', background: 'var(--surface)',
+    position: 'sticky', top: 0, zIndex: 2,
+  });
+
+  const arrow = (col) => sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+
+  if (allRows.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+        No tickets match this filter
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: '10px', overflow: 'hidden',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle('_'), width: '50px', cursor: 'default' }}></th>
+              <th style={thStyle('project')} onClick={() => handleSort('project')}>Project{arrow('project')}</th>
+              <th style={thStyle('title')} onClick={() => handleSort('title')}>Title{arrow('title')}</th>
+              <th style={thStyle('assignee')} onClick={() => handleSort('assignee')}>Assignee{arrow('assignee')}</th>
+              <th style={thStyle('workflow')} onClick={() => handleSort('workflow')}>Status{arrow('workflow')}</th>
+              <th style={thStyle('priority')} onClick={() => handleSort('priority')}>Priority{arrow('priority')}</th>
+              <th style={thStyle('type')} onClick={() => handleSort('type')}>Type{arrow('type')}</th>
+              <th style={thStyle('modified')} onClick={() => handleSort('modified')}>Modified{arrow('modified')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((item, i) => {
+              const lastModified = item.updatedAt || item.createdAt;
+              const dateLabel = formatDate(lastModified);
+              const days = getDaysSince(lastModified);
+              const aging = getAgingLevel(days);
+              const agingStyle = AGING_STYLES[aging];
+              const rawAssignee = item.assignee || '';
+              const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
+
+              return (
+                <tr key={item.id || i} style={{
+                  borderBottom: '1px solid var(--border)',
+                  background: i % 2 === 0 ? 'transparent' : 'var(--surface2)',
+                }}>
+                  {/* Thumbnail */}
+                  <td style={{ padding: '6px 8px', width: '50px' }}>
+                    {item.thumbnail ? (
+                      <a href={item.url || '#'} target="_blank" rel="noreferrer">
+                        <img src={item.thumbnail} alt="" style={{
+                          width: '40px', height: '28px', objectFit: 'cover', borderRadius: '3px',
+                          border: '1px solid var(--border)',
+                        }} onError={e => { e.target.style.display = 'none'; }} />
+                      </a>
+                    ) : (
+                      <div style={{ width: '40px', height: '28px', background: 'var(--surface2)', borderRadius: '3px' }} />
+                    )}
+                  </td>
+
+                  {/* Project */}
+                  <td style={{ padding: '6px 10px', fontSize: '13px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>
+                    {item._projectName}
+                  </td>
+
+                  {/* Title */}
+                  <td style={{ padding: '6px 10px', maxWidth: '400px' }}>
+                    {item.url ? (
+                      <a href={item.url} target="_blank" rel="noreferrer" style={{
+                        color: 'var(--text)', textDecoration: 'none',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        display: 'block',
+                      }} title={item.title}>{item.title}</a>
+                    ) : (
+                      <span style={{
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        display: 'block',
+                      }} title={item.title}>{item.title}</span>
+                    )}
+                  </td>
+
+                  {/* Assignee */}
+                  <td style={{ padding: '6px 10px', fontSize: '13px', color: assigneeLabel ? 'var(--text2)' : 'var(--muted)', whiteSpace: 'nowrap' }}>
+                    {assigneeLabel || '—'}
+                  </td>
+
+                  {/* Workflow */}
+                  <td style={{ padding: '6px 10px' }}>
+                    <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
+                  </td>
+
+                  {/* Priority */}
+                  <td style={{ padding: '6px 10px' }}>
+                    <PriorityBadge priority={item.priority} color={item.priorityColor} />
+                  </td>
+
+                  {/* Type */}
+                  <td style={{ padding: '6px 10px' }}>
+                    <TypeTag type={item.feedbackType} />
+                  </td>
+
+                  {/* Modified */}
+                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                    {dateLabel && (
+                      <span style={{
+                        fontSize: '12px', fontFamily: 'var(--mono)',
+                        color: agingStyle.color, background: agingStyle.bg,
+                        padding: aging !== 'ok' ? '1px 6px' : '0',
+                        borderRadius: '4px',
+                      }}>{dateLabel}</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
+        {sorted.length} ticket{sorted.length !== 1 ? 's' : ''}
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
@@ -402,28 +579,32 @@ export default function Dashboard() {
   const [filter, setFilterState]           = useState('all');
   const [assigneeFilter, setAssigneeState] = useState('all');
   const [projectFilter, setProjectState]   = useState('all');
+  const [viewMode, setViewModeState]       = useState('cards');
 
   // Read query params on mount
   useEffect(() => {
     if (!router.isReady) return;
-    const { status, team, project } = router.query;
+    const { status, team, project, view } = router.query;
     if (status && FILTER_CONFIG[status]) setFilterState(status);
     if (team) setAssigneeState(team);
     if (project) setProjectState(project);
+    if (view === 'table') setViewModeState('table');
   }, [router.isReady, router.query]);
 
-  function updateURL(status, team, project) {
+  function updateURL(status, team, project, view) {
     const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
     if (team && team !== 'all') params.set('team', team);
     if (project && project !== 'all') params.set('project', project);
+    if (view === 'table') params.set('view', 'table');
     const qs = params.toString();
     router.replace(qs ? `/dashboard?${qs}` : '/dashboard', undefined, { shallow: true });
   }
 
-  function setFilter(val) { setFilterState(val); updateURL(val, assigneeFilter, projectFilter); }
-  function setAssigneeFilter(val) { setAssigneeState(val); updateURL(filter, val, projectFilter); }
-  function setProjectFilter(val) { setProjectState(val); updateURL(filter, assigneeFilter, val); }
+  function setFilter(val) { setFilterState(val); updateURL(val, assigneeFilter, projectFilter, viewMode); }
+  function setAssigneeFilter(val) { setAssigneeState(val); updateURL(filter, val, projectFilter, viewMode); }
+  function setProjectFilter(val) { setProjectState(val); updateURL(filter, assigneeFilter, val, viewMode); }
+  function setViewMode(val) { setViewModeState(val); updateURL(filter, assigneeFilter, projectFilter, val); }
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
@@ -597,6 +778,28 @@ export default function Dashboard() {
 
                 <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}><FilterLegend /></div>
 
+                {/* View toggle */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', flexShrink: 0,
+                  background: 'var(--surface2)', borderRadius: '8px', padding: '2px',
+                  border: '1px solid var(--border)',
+                }}>
+                  <button onClick={() => setViewMode('cards')} style={{
+                    background: viewMode === 'cards' ? 'var(--surface)' : 'transparent',
+                    border: 'none', borderRadius: '6px', padding: '5px 10px',
+                    fontSize: '14px', cursor: 'pointer', lineHeight: 1,
+                    color: viewMode === 'cards' ? 'var(--text)' : 'var(--muted)',
+                    boxShadow: viewMode === 'cards' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  }} title="Card view">☰</button>
+                  <button onClick={() => setViewMode('table')} style={{
+                    background: viewMode === 'table' ? 'var(--surface)' : 'transparent',
+                    border: 'none', borderRadius: '6px', padding: '5px 10px',
+                    fontSize: '14px', cursor: 'pointer', lineHeight: 1,
+                    color: viewMode === 'table' ? 'var(--text)' : 'var(--muted)',
+                    boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  }} title="Table view">▤</button>
+                </div>
+
                 {/* Project filter */}
                 {projectNames.length > 0 && (
                   <div style={{
@@ -633,22 +836,21 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className="dt-project-grid">
-                {/* Needs Attention — spans full width, only on "all" */}
-                {filter === 'all' && (
-                  <div className="dt-needs-attention">
-                    <NeedsAttentionPanel projects={filteredProjects} />
-                  </div>
-                )}
+              {viewMode === 'table' ? (
+                <TicketTable projects={filteredProjects} />
+              ) : (
+                <>
+                  {filter === 'all' && <NeedsAttentionPanel projects={filteredProjects} />}
 
-                {filteredProjects.length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                    No tickets match this filter
-                  </div>
-                ) : (
-                  filteredProjects.map(project => <ProjectCard key={project.name} project={project} />)
-                )}
-              </div>
+                  {filteredProjects.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      No tickets match this filter
+                    </div>
+                  ) : (
+                    filteredProjects.map(project => <ProjectCard key={project.name} project={project} />)
+                  )}
+                </>
+              )}
             </>
           )}
         </main>
