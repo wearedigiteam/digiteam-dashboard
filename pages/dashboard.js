@@ -225,8 +225,8 @@ function TicketRow({ item, showProject }) {
             src={item.thumbnail}
             alt=""
             style={{
-              width: '48px', height: '36px',
-              objectFit: 'cover', borderRadius: '4px',
+              width: '100px', height: 'auto',
+              objectFit: 'contain', borderRadius: '4px',
               border: '1px solid var(--border)',
               background: 'var(--surface2)',
             }}
