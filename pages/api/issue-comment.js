@@ -31,8 +31,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         feedbackId: String(feedbackId),
         comment: prefixedComment,
-        guestName: 'Bruno AI',
-        guestEmail: 'hello@digiteam.ca',
+        userId: 38527,
       }),
     });
 
