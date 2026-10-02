@@ -42,42 +42,30 @@ function getDaysSince(dateStr) {
 
 function getAgingLevel(days) {
   if (days === null) return 'none';
-  if (days >= 60) return 'critical';   // red
-  if (days >= 30) return 'warning';    // orange
-  if (days >= 14) return 'stale';      // yellow
+  if (days >= 60) return 'critical';
+  if (days >= 30) return 'warning';
+  if (days >= 14) return 'stale';
   return 'ok';
 }
 
 const AGING_STYLES = {
-  ok:       { bg: 'transparent', color: 'var(--muted)', label: '' },
-  stale:    { bg: '#ffeb3b', color: '#6b5900', label: '' },
-  warning:  { bg: '#ff9800', color: '#fff', label: '' },
-  critical: { bg: '#e53935', color: '#fff', label: '' },
+  ok:       { bg: 'transparent', color: 'var(--muted)' },
+  stale:    { bg: '#ffeb3b', color: '#6b5900' },
+  warning:  { bg: '#ff9800', color: '#fff' },
+  critical: { bg: '#e53935', color: '#fff' },
 };
 
-// ── Health config ────────────────────────────────────────────────────────────
-const HEALTH_CONFIG = {
-  blocked:  { bg: 'var(--status-blocked-bg)',  text: 'var(--status-blocked-text)',  dot: 'var(--status-blocked-dot)',  label: 'Blocked',   desc: 'Has tickets on hold' },
-  stale:    { bg: 'var(--status-stale-bg)',    text: 'var(--status-stale-text)',    dot: 'var(--status-stale-dot)',    label: 'Stale',     desc: 'Open tickets but none in progress and nothing resolved recently' },
-  active:   { bg: 'var(--status-active-bg)',   text: 'var(--status-active-text)',   dot: 'var(--status-active-dot)',   label: 'Active',    desc: 'Tickets in progress or recently resolved' },
-  clear:    { bg: 'var(--status-clear-bg)',    text: 'var(--status-clear-text)',    dot: 'var(--status-clear-dot)',    label: 'Clear',     desc: 'No open tickets' },
+// ── Ticket filter config (ticket-centric, not project-centric) ───────────────
+const FILTER_CONFIG = {
+  all:        { label: 'All',         color: 'var(--dt-navy)',             bg: 'var(--dt-navy)',              textActive: '#fff' },
+  onhold:     { label: 'On Hold',     color: 'var(--status-blocked-dot)',  bg: 'var(--status-blocked-bg)',    textActive: 'var(--status-blocked-text)' },
+  inprogress: { label: 'In Progress', color: 'var(--status-inflight-dot)', bg: 'var(--status-inflight-bg)',   textActive: 'var(--status-inflight-text)' },
+  open:       { label: 'Open',        color: 'var(--muted)',               bg: 'var(--surface2)',             textActive: 'var(--text)' },
+  aging:      { label: 'Aging 30+',   color: '#e07020',                    bg: '#fff3e0',                    textActive: '#e07020' },
+  resolved:   { label: 'Resolved',    color: 'var(--green)',               bg: 'var(--status-active-bg)',     textActive: 'var(--green)' },
 };
 
 // ── Reusable components ──────────────────────────────────────────────────────
-function StatusBadge({ health }) {
-  const cfg = HEALTH_CONFIG[health] || HEALTH_CONFIG.clear;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '7px',
-      fontSize: '14px', fontWeight: '600', padding: '5px 14px', borderRadius: '20px',
-      background: cfg.bg, color: cfg.text, whiteSpace: 'nowrap',
-    }}>
-      <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-      {cfg.label}
-    </span>
-  );
-}
-
 function PriorityBadge({ priority, color }) {
   if (!priority || priority === 'None') return null;
   return (
@@ -102,7 +90,22 @@ function TypeTag({ type }) {
   );
 }
 
-function StatusLegend() {
+function WorkflowBadge({ name, color }) {
+  if (!name) return null;
+  const bgColor = color ? `${color}20` : 'var(--surface2)';
+  const textColor = color || 'var(--muted)';
+  return (
+    <span style={{
+      fontSize: '11px', fontWeight: '600', padding: '2px 7px',
+      borderRadius: '4px', whiteSpace: 'nowrap',
+      background: bgColor, color: textColor,
+      border: `1px solid ${color ? `${color}40` : 'var(--border)'}`,
+    }}>{name}</span>
+  );
+}
+
+// ── Filter legend ────────────────────────────────────────────────────────────
+function FilterLegend() {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -122,7 +125,7 @@ function StatusLegend() {
         borderRadius: '50%', width: '26px', height: '26px',
         fontSize: '14px', fontWeight: '600',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-      }} title="How are statuses determined?">?</button>
+      }} title="What do the filters mean?">?</button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
@@ -133,20 +136,23 @@ function StatusLegend() {
             boxShadow: '0 8px 30px rgba(0,0,0,0.12)', zIndex: 1000,
           }}>
             <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', marginBottom: '14px' }}>
-              Status logic
+              Ticket filters
             </div>
-            {['blocked', 'stale', 'active', 'clear'].map(key => {
-              const cfg = HEALTH_CONFIG[key];
-              return (
-                <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: key !== 'clear' ? '1px solid var(--border)' : 'none' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: cfg.dot, flexShrink: 0, marginTop: '4px' }} />
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: cfg.text }}>{cfg.label}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: 1.4 }}>{cfg.desc}</div>
+            {Object.entries(FILTER_CONFIG).filter(([k]) => k !== 'all').map(([key, cfg]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: key !== 'resolved' ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: cfg.color, flexShrink: 0, marginTop: '4px' }} />
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{cfg.label}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                    {key === 'onhold' && 'Tickets parked or waiting — something is preventing progress'}
+                    {key === 'inprogress' && 'Actively being worked on'}
+                    {key === 'open' && 'Logged but not yet started'}
+                    {key === 'aging' && 'Not updated in 30+ days — needs attention or should be closed'}
+                    {key === 'resolved' && 'Closed within the last 7 days'}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
             <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '13px', color: 'var(--muted)', lineHeight: 1.5 }}>
               <strong style={{ color: 'var(--text)' }}>Age indicators:</strong>{' '}
               <span style={{ background: '#ffeb3b', color: '#6b5900', padding: '1px 6px', borderRadius: '3px', fontSize: '12px' }}>14+ days</span>{' '}
@@ -174,35 +180,17 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// ── Sort: priority desc, then age desc (oldest first) ────────────────────────
+// ── Sort by priority desc, then oldest first ─────────────────────────────────
 function sortByUrgency(items) {
   return [...items].sort((a, b) => {
-    // Priority first (higher level = more urgent)
     const pDiff = (b.priorityLevel || 0) - (a.priorityLevel || 0);
     if (pDiff !== 0) return pDiff;
-    // Then by age (oldest modification first = needs attention)
-    const aDate = new Date(a.updatedAt || a.createdAt || 0);
-    const bDate = new Date(b.updatedAt || b.createdAt || 0);
-    return aDate - bDate;
+    return new Date(a.updatedAt || a.createdAt || 0) - new Date(b.updatedAt || b.createdAt || 0);
   });
 }
 
 // ── Ticket row ───────────────────────────────────────────────────────────────
 const PREVIEW_COUNT = 3;
-
-function WorkflowBadge({ name, color }) {
-  if (!name) return null;
-  const bgColor = color ? `${color}20` : 'var(--surface2)';
-  const textColor = color || 'var(--muted)';
-  return (
-    <span style={{
-      fontSize: '11px', fontWeight: '600', padding: '2px 7px',
-      borderRadius: '4px', whiteSpace: 'nowrap',
-      background: bgColor, color: textColor,
-      border: `1px solid ${color ? `${color}40` : 'var(--border)'}`,
-    }}>{name}</span>
-  );
-}
 
 function TicketRow({ item, showProject }) {
   const lastModified = item.updatedAt || item.createdAt;
@@ -218,23 +206,14 @@ function TicketRow({ item, showProject }) {
       display: 'flex', alignItems: 'flex-start', gap: '10px',
       padding: '8px 0', borderBottom: '1px solid var(--border)',
     }}>
-      {/* Thumbnail */}
       {item.thumbnail && (
         <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-          <img
-            src={item.thumbnail}
-            alt=""
-            style={{
-              width: '100px', height: 'auto',
-              objectFit: 'contain', borderRadius: '4px',
-              border: '1px solid var(--border)',
-              background: 'var(--surface2)',
-            }}
-            onError={e => { e.target.style.display = 'none'; }}
-          />
+          <img src={item.thumbnail} alt="" style={{
+            width: '100px', height: 'auto', objectFit: 'contain', borderRadius: '4px',
+            border: '1px solid var(--border)', background: 'var(--surface2)',
+          }} onError={e => { e.target.style.display = 'none'; }} />
         </a>
       )}
-
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {item.url ? (
@@ -317,7 +296,6 @@ function TicketSection({ title, items, color, bgColor, showProject }) {
 
 // ── Needs Attention panel ────────────────────────────────────────────────────
 function NeedsAttentionPanel({ projects }) {
-  // Collect all active tickets across all projects, tag with project name
   const allTickets = [];
   for (const p of projects) {
     const d = p.data;
@@ -327,16 +305,11 @@ function NeedsAttentionPanel({ projects }) {
     (d.inProgress || []).forEach(i => allTickets.push(tag(i)));
     (d.onHold || []).forEach(i => allTickets.push(tag(i)));
   }
-
-  // Filter to tickets aging 30+ days
   const aging = allTickets.filter(t => {
     const days = getDaysSince(t.updatedAt || t.createdAt);
     return days !== null && days >= 30;
   });
-
   if (aging.length === 0) return null;
-
-  // Sort: critical aging first, then warning
   const sorted = sortByUrgency(aging);
   const critical = sorted.filter(t => getAgingLevel(getDaysSince(t.updatedAt || t.createdAt)) === 'critical');
   const warning = sorted.filter(t => getAgingLevel(getDaysSince(t.updatedAt || t.createdAt)) === 'warning');
@@ -348,24 +321,12 @@ function NeedsAttentionPanel({ projects }) {
       padding: '20px', marginBottom: '20px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>
-          Needs attention
-        </span>
-        <span style={{
-          fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600',
-          background: '#e53935', color: '#fff', padding: '2px 10px', borderRadius: '10px',
-        }}>{aging.length}</span>
-        <span style={{ fontSize: '14px', color: 'var(--muted)' }}>
-          ticket{aging.length !== 1 ? 's' : ''} untouched for 30+ days
-        </span>
+        <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Needs attention</span>
+        <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: '#e53935', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{aging.length}</span>
+        <span style={{ fontSize: '14px', color: 'var(--muted)' }}>ticket{aging.length !== 1 ? 's' : ''} untouched for 30+ days</span>
       </div>
-
-      {critical.length > 0 && (
-        <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="#fcebeb" showProject />
-      )}
-      {warning.length > 0 && (
-        <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="#fff3e0" showProject />
-      )}
+      {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="#fcebeb" showProject />}
+      {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="#fff3e0" showProject />}
     </div>
   );
 }
@@ -373,10 +334,7 @@ function NeedsAttentionPanel({ projects }) {
 // ── Project card ─────────────────────────────────────────────────────────────
 function ProjectCard({ project }) {
   const [expanded, setExpanded] = useState(true);
-  const cfg = HEALTH_CONFIG[project.health] || HEALTH_CONFIG.clear;
   const d = project.data;
-
-  // Count aging tickets for badge
   const allActive = [...(d?.open || []), ...(d?.inProgress || []), ...(d?.onHold || [])];
   const aging30 = allActive.filter(t => {
     const days = getDaysSince(t.updatedAt || t.createdAt);
@@ -386,7 +344,6 @@ function ProjectCard({ project }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: `4px solid ${cfg.dot}`,
       borderRadius: '10px', marginBottom: '14px', overflow: 'hidden',
     }}>
       <button className="dt-card-header" onClick={() => setExpanded(e => !e)}
@@ -407,13 +364,11 @@ function ProjectCard({ project }) {
               padding: '3px 10px', borderRadius: '6px',
             }}>{aging30} aging</span>
           )}
-          <StatusBadge health={project.health} />
           <span style={{ fontSize: '14px', color: 'var(--muted)', marginLeft: '4px' }}>
             {expanded ? '▲' : '▼'}
           </span>
         </div>
       </button>
-
       {expanded && d && (
         <div style={{ padding: '16px 20px' }}>
           {d.error ? (
@@ -442,43 +397,27 @@ export default function Dashboard() {
   const [error, setError]     = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
 
-  // Read initial filter state from URL query params
-  const [filter, setFilterState]         = useState('all');
+  const [filter, setFilterState]           = useState('all');
   const [assigneeFilter, setAssigneeState] = useState('all');
-  const [initialised, setInitialised]    = useState(false);
 
-  // On mount, read query params
+  // Read query params on mount
   useEffect(() => {
     if (!router.isReady) return;
     const { status, team } = router.query;
-    if (status && ['blocked', 'stale', 'active', 'clear'].includes(status)) {
-      setFilterState(status);
-    }
-    if (team) {
-      setAssigneeState(team);
-    }
-    setInitialised(true);
+    if (status && FILTER_CONFIG[status]) setFilterState(status);
+    if (team) setAssigneeState(team);
   }, [router.isReady, router.query]);
 
-  // Update URL when filters change (without page reload)
   function updateURL(status, team) {
     const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
     if (team && team !== 'all') params.set('team', team);
     const qs = params.toString();
-    const newPath = qs ? `/dashboard?${qs}` : '/dashboard';
-    router.replace(newPath, undefined, { shallow: true });
+    router.replace(qs ? `/dashboard?${qs}` : '/dashboard', undefined, { shallow: true });
   }
 
-  function setFilter(val) {
-    setFilterState(val);
-    updateURL(val, assigneeFilter);
-  }
-
-  function setAssigneeFilter(val) {
-    setAssigneeState(val);
-    updateURL(filter, val);
-  }
+  function setFilter(val) { setFilterState(val); updateURL(val, assigneeFilter); }
+  function setAssigneeFilter(val) { setAssigneeState(val); updateURL(filter, val); }
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
@@ -500,17 +439,36 @@ export default function Dashboard() {
     router.push('/');
   }
 
-  // ── Team members (from Userback API directly) ──
   const teamMembers = (data?.teamMembers || []).map(m => m.name);
 
-  // ── Assignee filtering (supports "unassigned") ──
+  // ── Compute ticket-level counts across all projects ──
+  function getAllTickets() {
+    const tickets = { onhold: [], inprogress: [], open: [], aging: [], resolved: [], all: [] };
+    for (const p of (data?.projects || [])) {
+      const d = p.data;
+      if (!d) continue;
+      const tag = item => ({ ...item, _projectName: p.name });
+      for (const t of (d.onHold || []))           { const tagged = tag(t); tickets.onhold.push(tagged); tickets.all.push(tagged); }
+      for (const t of (d.inProgress || []))        { const tagged = tag(t); tickets.inprogress.push(tagged); tickets.all.push(tagged); }
+      for (const t of (d.open || []))              { const tagged = tag(t); tickets.open.push(tagged); tickets.all.push(tagged); }
+      for (const t of (d.resolvedThisWeek || []))  { const tagged = tag(t); tickets.resolved.push(tagged); }
+    }
+    // Aging: any active ticket not updated in 30+ days
+    tickets.aging = tickets.all.filter(t => {
+      const days = getDaysSince(t.updatedAt || t.createdAt);
+      return days !== null && days >= 30;
+    });
+    return tickets;
+  }
+
+  const allTickets = data ? getAllTickets() : null;
+
+  // ── Assignee filtering (item-level) ──
   function filterByAssignee(project, filterValue) {
     if (!filterValue || filterValue === 'all') return project;
-
     const filterItems = filterValue === 'unassigned'
       ? items => (items || []).filter(item => !item.assignee || /^\d+$/.test(item.assignee))
       : items => (items || []).filter(item => item.assignee === filterValue);
-
     const d = project.data;
     if (!d) return null;
     const open = filterItems(d.open);
@@ -522,21 +480,39 @@ export default function Dashboard() {
     return { ...project, totalActive: total, data: { ...d, open, inProgress, onHold, resolvedThisWeek, total } };
   }
 
-  const statusCounts = {};
-  data?.projects?.forEach(p => { statusCounts[p.health] = (statusCounts[p.health] || 0) + 1; });
+  // ── Ticket-level status filtering ──
+  function filterByStatus(project, statusFilter) {
+    if (!statusFilter || statusFilter === 'all') return project;
+    const d = project.data;
+    if (!d) return null;
+
+    let open = d.open || [];
+    let inProgress = d.inProgress || [];
+    let onHold = d.onHold || [];
+    let resolvedThisWeek = d.resolvedThisWeek || [];
+
+    if (statusFilter === 'onhold')     { open = []; inProgress = []; resolvedThisWeek = []; }
+    if (statusFilter === 'inprogress') { open = []; onHold = []; resolvedThisWeek = []; }
+    if (statusFilter === 'open')       { inProgress = []; onHold = []; resolvedThisWeek = []; }
+    if (statusFilter === 'resolved')   { open = []; inProgress = []; onHold = []; }
+    if (statusFilter === 'aging') {
+      const isAging = t => { const days = getDaysSince(t.updatedAt || t.createdAt); return days !== null && days >= 30; };
+      open = open.filter(isAging);
+      inProgress = inProgress.filter(isAging);
+      onHold = onHold.filter(isAging);
+      resolvedThisWeek = [];
+    }
+
+    const total = open.length + inProgress.length + onHold.length;
+    if (total + resolvedThisWeek.length === 0) return null;
+    return { ...project, totalActive: total, data: { ...d, open, inProgress, onHold, resolvedThisWeek, total } };
+  }
 
   const filteredProjects = (data?.projects || [])
-    .filter(p => filter === 'all' || p.health === filter)
     .map(p => filterByAssignee(p, assigneeFilter))
+    .filter(Boolean)
+    .map(p => filterByStatus(p, filter))
     .filter(Boolean);
-
-  // teamMembers already defined above from API
-
-  // ── Aging summary stats ──
-  const totalAging30 = (data?.projects || []).reduce((n, p) => {
-    const all = [...(p.data?.open || []), ...(p.data?.inProgress || []), ...(p.data?.onHold || [])];
-    return n + all.filter(t => { const d = getDaysSince(t.updatedAt || t.createdAt); return d !== null && d >= 30; }).length;
-  }, 0);
 
   return (
     <>
@@ -587,47 +563,29 @@ export default function Dashboard() {
             <div style={{ background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33', borderRadius: '10px', padding: '18px 22px', color: 'var(--red)', fontSize: '15px', marginBottom: '20px' }}>Error: {error}</div>
           )}
 
-          {data && (
+          {data && allTickets && (
             <>
+              {/* ── Ticket-level filter strip ── */}
               <div className="dt-status-strip">
-                <button className="dt-status-btn" onClick={() => setFilter('all')} style={{
-                  background: filter === 'all' ? 'var(--dt-navy)' : 'var(--surface)',
-                  color: filter === 'all' ? '#fff' : 'var(--text)',
-                  borderColor: filter === 'all' ? 'var(--dt-navy)' : 'var(--border)',
-                }}>
-                  <div className="dt-status-num">{data.projects.length}</div>
-                  <div className="dt-status-label" style={{ color: filter === 'all' ? 'rgba(255,255,255,0.6)' : 'var(--muted)' }}>All</div>
-                </button>
-
-                {['blocked', 'stale', 'active', 'clear'].map(key => {
-                  const cfg = HEALTH_CONFIG[key];
-                  const count = statusCounts[key] || 0;
+                {Object.entries(FILTER_CONFIG).map(([key, cfg]) => {
+                  const count = key === 'all'
+                    ? allTickets.all.length
+                    : (allTickets[key]?.length || 0);
                   const isActive = filter === key;
                   return (
-                    <button key={key} className="dt-status-btn" onClick={() => setFilter(isActive ? 'all' : key)} style={{
+                    <button key={key} className="dt-status-btn" onClick={() => setFilter(isActive && key !== 'all' ? 'all' : key)} style={{
                       background: isActive ? cfg.bg : 'var(--surface)',
-                      borderColor: isActive ? cfg.dot : 'var(--border)',
-                      borderLeft: `4px solid ${cfg.dot}`, opacity: count === 0 ? 0.5 : 1,
+                      borderColor: isActive ? cfg.color : 'var(--border)',
+                      borderLeft: key !== 'all' ? `4px solid ${cfg.color}` : undefined,
+                      opacity: count === 0 && key !== 'all' ? 0.5 : 1,
                     }}>
-                      <div className="dt-status-num" style={{ color: cfg.dot }}>{count}</div>
-                      <div className="dt-status-label" style={{ color: cfg.text }}>{cfg.label}</div>
+                      <div className="dt-status-num" style={{ color: isActive && key === 'all' ? '#fff' : cfg.color }}>{count}</div>
+                      <div className="dt-status-label" style={{ color: isActive && key === 'all' ? 'rgba(255,255,255,0.6)' : (isActive ? cfg.textActive : 'var(--muted)') }}>{cfg.label}</div>
                     </button>
                   );
                 })}
 
-                {/* Aging count */}
-                {totalAging30 > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
-                    background: '#fff3e0', border: '1px solid #ff9800',
-                    borderRadius: '10px', padding: '8px 14px',
-                  }}>
-                    <span style={{ fontSize: '18px', fontWeight: '700', color: '#e07020' }}>{totalAging30}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '500', color: '#e07020' }}>aging</span>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}><StatusLegend /></div>
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}><FilterLegend /></div>
 
                 {teamMembers.length > 0 && (
                   <div style={{
@@ -647,12 +605,12 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Needs Attention — aging tickets across all projects */}
-              <NeedsAttentionPanel projects={filteredProjects} />
+              {/* Needs Attention — only show when not filtering to a specific status */}
+              {filter === 'all' && <NeedsAttentionPanel projects={filteredProjects} />}
 
               {filteredProjects.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                  No projects match this filter
+                  No tickets match this filter
                 </div>
               ) : (
                 filteredProjects.map(project => <ProjectCard key={project.name} project={project} />)
