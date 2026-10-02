@@ -653,25 +653,7 @@ export default function Dashboard() {
     router.push('/');
   }
 
-  async function askAI(e) {
-    if (e) e.preventDefault();
-    if (!aiQuestion.trim() || aiLoading) return;
-    setAiLoading(true); setAiError(null); setAiReply('');
-    try {
-      const res = await fetch('/api/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: aiQuestion, ticketData: data }),
-      });
-      if (!res.ok) throw new Error('Failed to get response');
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      setAiReply(json.reply);
-    } catch (err) { setAiError(err.message); }
-    finally { setAiLoading(false); }
-  }
-
-  async function askQuickPrompt(prompt) {
+  async function sendToAI(prompt) {
     setAiLoading(true); setAiError(null); setAiReply('');
     try {
       const res = await fetch('/api/ask', {
@@ -679,12 +661,21 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: prompt, ticketData: data }),
       });
-      if (!res.ok) throw new Error('Failed to get response');
       const json = await res.json();
-      if (json.error) throw new Error(json.error);
+      if (json.error) { setAiError(json.error); return; }
       setAiReply(json.reply);
     } catch (err) { setAiError(err.message); }
     finally { setAiLoading(false); }
+  }
+
+  function askAI(e) {
+    if (e) e.preventDefault();
+    if (!aiQuestion.trim() || aiLoading) return;
+    sendToAI(aiQuestion);
+  }
+
+  function askQuickPrompt(prompt) {
+    sendToAI(prompt);
   }
 
   const teamMembers = (data?.teamMembers || []).map(m => m.name);

@@ -83,8 +83,10 @@ ${contextLines.join('\n')}`;
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Anthropic API error: ${response.status} — ${err.slice(0, 200)}`);
+      const errBody = await response.text().catch(() => '');
+      return res.status(502).json({
+        error: `Anthropic API returned ${response.status}: ${errBody.slice(0, 300)}`,
+      });
     }
 
     const data = await response.json();
