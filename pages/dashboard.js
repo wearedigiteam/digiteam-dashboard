@@ -215,7 +215,7 @@ function TicketRow({ item, showProject }) {
         </a>
       )}
 
-      {/* Title — takes available space */}
+      {/* Title + description */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {item.url ? (
           <a href={item.url} target="_blank" rel="noreferrer" style={{
@@ -229,6 +229,15 @@ function TicketRow({ item, showProject }) {
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             display: 'block',
           }} title={item.title}>{item.title}</span>
+        )}
+        {item.description && (
+          <div style={{
+            fontSize: '13px', color: 'var(--muted)', lineHeight: '1.4',
+            marginTop: '2px',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }} title={item.description}>
+            {item.description}
+          </div>
         )}
       </div>
 
@@ -523,6 +532,15 @@ function TicketTable({ projects }) {
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         display: 'block',
                       }} title={item.title}>{item.title}</span>
+                    )}
+                    {item.description && (
+                      <div style={{
+                        fontSize: '12px', color: 'var(--muted)', lineHeight: '1.3',
+                        marginTop: '2px',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }} title={item.description}>
+                        {item.description}
+                      </div>
                     )}
                   </td>
 
