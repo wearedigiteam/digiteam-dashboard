@@ -441,8 +441,44 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
-  const [filter, setFilter]   = useState('all');
-  const [assigneeFilter, setAssigneeFilter] = useState('all');
+
+  // Read initial filter state from URL query params
+  const [filter, setFilterState]         = useState('all');
+  const [assigneeFilter, setAssigneeState] = useState('all');
+  const [initialised, setInitialised]    = useState(false);
+
+  // On mount, read query params
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { status, team } = router.query;
+    if (status && ['blocked', 'stale', 'active', 'clear'].includes(status)) {
+      setFilterState(status);
+    }
+    if (team) {
+      setAssigneeState(team);
+    }
+    setInitialised(true);
+  }, [router.isReady, router.query]);
+
+  // Update URL when filters change (without page reload)
+  function updateURL(status, team) {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') params.set('status', status);
+    if (team && team !== 'all') params.set('team', team);
+    const qs = params.toString();
+    const newPath = qs ? `/dashboard?${qs}` : '/dashboard';
+    router.replace(newPath, undefined, { shallow: true });
+  }
+
+  function setFilter(val) {
+    setFilterState(val);
+    updateURL(val, assigneeFilter);
+  }
+
+  function setAssigneeFilter(val) {
+    setAssigneeState(val);
+    updateURL(filter, val);
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
