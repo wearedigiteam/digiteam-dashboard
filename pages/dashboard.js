@@ -190,7 +190,8 @@ function sortByUrgency(items) {
 }
 
 // ── Solve panel (wrench button + AI solution + post to Userback) ─────────────
-function SolvePanel({ item }) {
+// Split into two parts: SolveButton (inline) and SolveExpander (full-width below row)
+function useSolve(item) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [solution, setSolution] = useState('');
@@ -199,24 +200,18 @@ function SolvePanel({ item }) {
   const [posted, setPosted] = useState(false);
 
   async function handleSolve() {
-    if (open && solution) { setOpen(false); return; } // Toggle close
+    if (open && solution) { setOpen(false); return; }
     setOpen(true);
-    if (solution) return; // Already loaded
+    if (solution) return;
     setLoading(true); setError(null);
     try {
-      // Step 1: Fetch full issue detail from Userback
       const detailRes = await fetch(`/api/issue-detail?id=${item.id}`);
       const detailJson = await detailRes.json();
       if (detailJson.error) throw new Error(detailJson.error);
-
-      // Step 2: Send to Claude for a solution
       const solveRes = await fetch('/api/issue-solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          feedback: detailJson.feedback,
-          comments: detailJson.comments,
-        }),
+        body: JSON.stringify({ feedback: detailJson.feedback, comments: detailJson.comments }),
       });
       const solveJson = await solveRes.json();
       if (solveJson.error) throw new Error(solveJson.error);
@@ -241,71 +236,68 @@ function SolvePanel({ item }) {
     finally { setPosting(false); }
   }
 
+  return { open, loading, solution, setSolution, error, posting, posted, handleSolve, handlePost };
+}
+
+function SolveButton({ solve }) {
   return (
-    <>
-      <button onClick={handleSolve} title="Help me fix this issue" style={{
-        background: open ? 'var(--orange)' : 'var(--surface2)',
-        border: `1px solid ${open ? 'var(--orange)' : 'var(--border)'}`,
-        borderRadius: '6px', padding: '5px 8px', cursor: 'pointer',
-        fontSize: '14px', lineHeight: 1, flexShrink: 0,
-        color: open ? '#fff' : 'var(--muted)',
-      }}>🔧</button>
+    <button onClick={solve.handleSolve} title="Help me fix this issue" style={{
+      background: solve.open ? 'var(--orange)' : 'var(--surface2)',
+      border: `1px solid ${solve.open ? 'var(--orange)' : 'var(--border)'}`,
+      borderRadius: '6px', padding: '5px 8px', cursor: 'pointer',
+      fontSize: '14px', lineHeight: 1, flexShrink: 0,
+      color: solve.open ? '#fff' : 'var(--muted)',
+    }}>🔧</button>
+  );
+}
 
-      {open && (
-        <div style={{
-          gridColumn: '1 / -1', width: '100%',
-          background: 'var(--surface2)', border: '1px solid var(--border)',
-          borderRadius: '8px', padding: '14px', marginTop: '6px',
-        }}>
-          {loading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--muted)', fontSize: '14px' }}>
-              <div style={{ width: '16px', height: '16px', border: '2px solid var(--border)', borderTopColor: 'var(--orange)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              Analysing issue and generating solution...
-            </div>
-          )}
-
-          {error && (
-            <div style={{ fontSize: '14px', color: 'var(--red)', marginBottom: '8px' }}>Error: {error}</div>
-          )}
-
-          {solution && !loading && (
-            <>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                AI Suggestion {posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
-              </div>
-              <textarea
-                value={solution}
-                onChange={e => setSolution(e.target.value)}
-                disabled={posted}
-                style={{
-                  width: '100%', minHeight: '180px', background: 'var(--surface)',
-                  border: '1px solid var(--border)', borderRadius: '6px',
-                  color: 'var(--text)', fontSize: '14px', lineHeight: 1.6,
-                  padding: '12px', resize: 'vertical', outline: 'none',
-                  fontFamily: 'var(--font)',
-                  opacity: posted ? 0.7 : 1,
-                }}
-              />
-              {!posted && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
-                  <button onClick={handlePost} disabled={posting} style={{
-                    background: posting ? 'var(--border2)' : 'var(--orange)',
-                    color: '#fff', border: 'none', borderRadius: '6px',
-                    padding: '8px 16px', fontSize: '13px', fontWeight: '600',
-                    cursor: posting ? 'not-allowed' : 'pointer',
-                  }}>
-                    {posting ? 'Posting...' : 'Post to Userback'}
-                  </button>
-                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                    Will be posted as [AI Suggestion]
-                  </span>
-                </div>
-              )}
-            </>
-          )}
+function SolveExpander({ solve }) {
+  if (!solve.open) return null;
+  return (
+    <div style={{
+      background: 'var(--surface2)', border: '1px solid var(--border)',
+      borderRadius: '8px', padding: '14px', marginTop: '6px',
+    }}>
+      {solve.loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--muted)', fontSize: '14px' }}>
+          <div style={{ width: '16px', height: '16px', border: '2px solid var(--border)', borderTopColor: 'var(--orange)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          Analysing issue and generating solution...
         </div>
       )}
-    </>
+      {solve.error && (
+        <div style={{ fontSize: '14px', color: 'var(--red)', marginBottom: '8px' }}>Error: {solve.error}</div>
+      )}
+      {solve.solution && !solve.loading && (
+        <>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+            AI Suggestion {solve.posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
+          </div>
+          <textarea
+            value={solve.solution}
+            onChange={e => solve.setSolution(e.target.value)}
+            disabled={solve.posted}
+            style={{
+              width: '100%', minHeight: '160px', background: 'var(--surface)',
+              border: '1px solid var(--border)', borderRadius: '6px',
+              color: 'var(--text)', fontSize: '14px', lineHeight: 1.6,
+              padding: '12px', resize: 'vertical', outline: 'none',
+              fontFamily: 'var(--font)', opacity: solve.posted ? 0.7 : 1,
+            }}
+          />
+          {!solve.posted && (
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', alignItems: 'center' }}>
+              <button onClick={solve.handlePost} disabled={solve.posting} style={{
+                background: solve.posting ? 'var(--border2)' : 'var(--orange)',
+                color: '#fff', border: 'none', borderRadius: '6px',
+                padding: '8px 16px', fontSize: '13px', fontWeight: '600',
+                cursor: solve.posting ? 'not-allowed' : 'pointer',
+              }}>{solve.posting ? 'Posting...' : 'Post to Userback'}</button>
+              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Will be posted as [AI Suggestion]</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -320,68 +312,67 @@ function TicketRow({ item, showProject }) {
   const agingStyle = AGING_STYLES[aging];
   const rawAssignee = item.assignee || '';
   const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
+  const solve = useSolve(item);
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '10px',
-      padding: '7px 0', borderBottom: '1px solid var(--border)',
-    }}>
-      {item.thumbnail && (
-        <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-          <img src={item.thumbnail} alt="" style={{
-            width: '120px', height: '75px', objectFit: 'cover', borderRadius: '4px',
-            border: '1px solid var(--border)', background: 'var(--surface2)',
-          }} onError={e => { e.target.style.display = 'none'; }} />
-        </a>
-      )}
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '7px 0',
+      }}>
+        {item.thumbnail && (
+          <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+            <img src={item.thumbnail} alt="" style={{
+              width: '120px', height: '75px', objectFit: 'cover', borderRadius: '4px',
+              border: '1px solid var(--border)', background: 'var(--surface2)',
+            }} onError={e => { e.target.style.display = 'none'; }} />
+          </a>
+        )}
 
-      {/* Title + description */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {item.url ? (
-          <a href={item.url} target="_blank" rel="noreferrer" style={{
-            fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            textDecoration: 'none', display: 'block',
-          }} title={item.title}>{item.title}</a>
-        ) : (
-          <span style={{
-            fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            display: 'block',
-          }} title={item.title}>{item.title}</span>
-        )}
-        {item.description && (
-          <div style={{
-            fontSize: '13px', color: 'var(--muted)', lineHeight: '1.4',
-            marginTop: '2px',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }} title={item.description}>
-            {item.description}
-          </div>
-        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {item.url ? (
+            <a href={item.url} target="_blank" rel="noreferrer" style={{
+              fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              textDecoration: 'none', display: 'block',
+            }} title={item.title}>{item.title}</a>
+          ) : (
+            <span style={{
+              fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              display: 'block',
+            }} title={item.title}>{item.title}</span>
+          )}
+          {item.description && (
+            <div style={{
+              fontSize: '13px', color: 'var(--muted)', lineHeight: '1.4', marginTop: '2px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }} title={item.description}>{item.description}</div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {showProject && item._projectName && (
+            <span style={{ fontSize: '11px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{item._projectName}</span>
+          )}
+          {assigneeLabel && <span style={{ fontSize: '12px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{assigneeLabel}</span>}
+          <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
+          <PriorityBadge priority={item.priority} color={item.priorityColor} />
+          <TypeTag type={item.feedbackType} />
+          {dateLabel && (
+            <span style={{
+              fontSize: '12px', fontFamily: 'var(--mono)',
+              color: agingStyle.color, background: agingStyle.bg,
+              padding: aging !== 'ok' ? '1px 6px' : '0',
+              borderRadius: '4px', whiteSpace: 'nowrap', minWidth: '55px', textAlign: 'right',
+            }}>{dateLabel}</span>
+          )}
+          <SolveButton solve={solve} />
+        </div>
       </div>
 
-      {/* Metadata — right-aligned, single row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-        {showProject && item._projectName && (
-          <span style={{ fontSize: '11px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-            {item._projectName}
-          </span>
-        )}
-        {assigneeLabel && <span style={{ fontSize: '12px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{assigneeLabel}</span>}
-        <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
-        <PriorityBadge priority={item.priority} color={item.priorityColor} />
-        <TypeTag type={item.feedbackType} />
-        {dateLabel && (
-          <span style={{
-            fontSize: '12px', fontFamily: 'var(--mono)',
-            color: agingStyle.color, background: agingStyle.bg,
-            padding: aging !== 'ok' ? '1px 6px' : '0',
-            borderRadius: '4px', whiteSpace: 'nowrap', minWidth: '55px', textAlign: 'right',
-          }}>{dateLabel}</span>
-        )}
-        <SolvePanel item={item} />
-      </div>
+      {/* Solution panel — full width below the ticket row */}
+      <SolveExpander solve={solve} />
     </div>
   );
 }
@@ -605,107 +596,94 @@ function TicketTable({ projects }) {
               <th style={{ ...thStyle('_solve'), width: '40px', cursor: 'default' }}></th>
             </tr>
           </thead>
-          <tbody>
-            {sorted.map((item, i) => {
-              const lastModified = item.updatedAt || item.createdAt;
-              const dateLabel = formatDate(lastModified);
-              const days = getDaysSince(lastModified);
-              const aging = getAgingLevel(days);
-              const agingStyle = AGING_STYLES[aging];
-              const rawAssignee = item.assignee || '';
-              const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
+          <TableBody sorted={sorted} />
+        </table>
+      </div>
+      <div style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
+        {sorted.length} ticket{sorted.length !== 1 ? 's' : ''}
+      </div>
+    </div>
+  );
+}
 
-              return (
-                <tr key={item.id || i} style={{
-                  borderBottom: '1px solid var(--border)',
-                  background: i % 2 === 0 ? 'transparent' : 'var(--surface2)',
-                }}>
-                  {/* Thumbnail */}
-                  <td style={{ padding: '6px 8px', width: '90px' }}>
-                    {item.thumbnail ? (
-                      <a href={item.url || '#'} target="_blank" rel="noreferrer">
-                        <img src={item.thumbnail} alt="" style={{
-                          width: '80px', height: '50px', objectFit: 'cover', borderRadius: '3px',
-                          border: '1px solid var(--border)',
-                        }} onError={e => { e.target.style.display = 'none'; }} />
-                      </a>
-                    ) : (
-                      <div style={{ width: '80px', height: '50px', background: 'var(--surface2)', borderRadius: '3px' }} />
-                    )}
-                  </td>
+function TableBody({ sorted }) {
+  return (
+    <tbody>
+      {sorted.map((item, i) => <TableRow key={item.id || i} item={item} index={i} />)}
+    </tbody>
+  );
+}
 
-                  {/* Project */}
-                  <td style={{ padding: '6px 10px', fontSize: '13px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>
-                    {item._projectName}
-                  </td>
+function TableRow({ item, index }) {
+  const lastModified = item.updatedAt || item.createdAt;
+  const dateLabel = formatDate(lastModified);
+  const days = getDaysSince(lastModified);
+  const aging = getAgingLevel(days);
+  const agingStyle = AGING_STYLES[aging];
+  const rawAssignee = item.assignee || '';
+  const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
+  const solve = useSolve(item);
 
-                  {/* Title */}
-                  <td style={{ padding: '6px 10px', maxWidth: '400px' }}>
-                    {item.url ? (
-                      <a href={item.url} target="_blank" rel="noreferrer" style={{
-                        color: 'var(--text)', textDecoration: 'none',
-                        fontSize: '15px', fontWeight: '500',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        display: 'block',
-                      }} title={item.title}>{item.title}</a>
-                    ) : (
-                      <span style={{
-                        fontSize: '15px', fontWeight: '500',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        display: 'block',
-                      }} title={item.title}>{item.title}</span>
-                    )}
-                    {item.description && (
-                      <div style={{
-                        fontSize: '12px', color: 'var(--muted)', lineHeight: '1.3',
-                        marginTop: '2px',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }} title={item.description}>
-                        {item.description}
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Assignee */}
-                  <td style={{ padding: '6px 10px', fontSize: '13px', color: assigneeLabel ? 'var(--text2)' : 'var(--muted)', whiteSpace: 'nowrap' }}>
-                    {assigneeLabel || '—'}
-                  </td>
-
-                  {/* Workflow */}
-                  <td style={{ padding: '6px 10px' }}>
-                    <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
-                  </td>
-
-                  {/* Priority */}
-                  <td style={{ padding: '6px 10px' }}>
-                    <PriorityBadge priority={item.priority} color={item.priorityColor} />
-                  </td>
-
-                  {/* Type */}
-                  <td style={{ padding: '6px 10px' }}>
-                    <TypeTag type={item.feedbackType} />
-                  </td>
-
-                  {/* Modified */}
-                  <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
-                    {dateLabel && (
-                      <span style={{
-                        fontSize: '12px', fontFamily: 'var(--mono)',
-                        color: agingStyle.color, background: agingStyle.bg,
-                        padding: aging !== 'ok' ? '1px 6px' : '0',
-                        borderRadius: '4px',
-                      }}>{dateLabel}</span>
-                    )}
-                  </td>
-
-                  {/* Solve */}
-                  <td style={{ padding: '6px 8px' }}>
-                    <SolvePanel item={item} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+  return (
+    <>
+      <tr style={{
+        borderBottom: solve.open ? 'none' : '1px solid var(--border)',
+        background: index % 2 === 0 ? 'transparent' : 'var(--surface2)',
+      }}>
+        <td style={{ padding: '6px 8px', width: '90px' }}>
+          {item.thumbnail ? (
+            <a href={item.url || '#'} target="_blank" rel="noreferrer">
+              <img src={item.thumbnail} alt="" style={{
+                width: '80px', height: '50px', objectFit: 'cover', borderRadius: '3px',
+                border: '1px solid var(--border)',
+              }} onError={e => { e.target.style.display = 'none'; }} />
+            </a>
+          ) : (
+            <div style={{ width: '80px', height: '50px', background: 'var(--surface2)', borderRadius: '3px' }} />
+          )}
+        </td>
+        <td style={{ padding: '6px 10px', fontSize: '13px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{item._projectName}</td>
+        <td style={{ padding: '6px 10px', maxWidth: '400px' }}>
+          {item.url ? (
+            <a href={item.url} target="_blank" rel="noreferrer" style={{
+              color: 'var(--text)', textDecoration: 'none', fontSize: '15px', fontWeight: '500',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
+            }} title={item.title}>{item.title}</a>
+          ) : (
+            <span style={{
+              fontSize: '15px', fontWeight: '500',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
+            }} title={item.title}>{item.title}</span>
+          )}
+          {item.description && (
+            <div style={{
+              fontSize: '12px', color: 'var(--muted)', lineHeight: '1.3', marginTop: '2px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }} title={item.description}>{item.description}</div>
+          )}
+        </td>
+        <td style={{ padding: '6px 10px', fontSize: '13px', color: assigneeLabel ? 'var(--text2)' : 'var(--muted)', whiteSpace: 'nowrap' }}>{assigneeLabel || '—'}</td>
+        <td style={{ padding: '6px 10px' }}><WorkflowBadge name={item.workflowName} color={item.workflowColor} /></td>
+        <td style={{ padding: '6px 10px' }}><PriorityBadge priority={item.priority} color={item.priorityColor} /></td>
+        <td style={{ padding: '6px 10px' }}><TypeTag type={item.feedbackType} /></td>
+        <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+          {dateLabel && (
+            <span style={{
+              fontSize: '12px', fontFamily: 'var(--mono)',
+              color: agingStyle.color, background: agingStyle.bg,
+              padding: aging !== 'ok' ? '1px 6px' : '0', borderRadius: '4px',
+            }}>{dateLabel}</span>
+          )}
+        </td>
+        <td style={{ padding: '6px 8px' }}><SolveButton solve={solve} /></td>
+      </tr>
+      {solve.open && (
+        <tr><td colSpan={9} style={{ padding: '0 10px 12px', borderBottom: '1px solid var(--border)' }}>
+          <SolveExpander solve={solve} />
+        </td></tr>
+      )}
+    </>
+  );
         </table>
       </div>
       <div style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
