@@ -209,7 +209,7 @@ function TicketRow({ item, showProject }) {
       {item.thumbnail && (
         <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
           <img src={item.thumbnail} alt="" style={{
-            width: '60px', height: '40px', objectFit: 'cover', borderRadius: '4px',
+            width: '120px', height: '75px', objectFit: 'cover', borderRadius: '4px',
             border: '1px solid var(--border)', background: 'var(--surface2)',
           }} onError={e => { e.target.style.display = 'none'; }} />
         </a>
@@ -219,13 +219,13 @@ function TicketRow({ item, showProject }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         {item.url ? (
           <a href={item.url} target="_blank" rel="noreferrer" style={{
-            fontSize: '14px', color: 'var(--text)', lineHeight: '1.3',
+            fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             textDecoration: 'none', display: 'block',
           }} title={item.title}>{item.title}</a>
         ) : (
           <span style={{
-            fontSize: '14px', color: 'var(--text)', lineHeight: '1.3',
+            fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             display: 'block',
           }} title={item.title}>{item.title}</span>
@@ -464,7 +464,7 @@ function TicketTable({ projects }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr>
-              <th style={{ ...thStyle('_'), width: '50px', cursor: 'default' }}></th>
+              <th style={{ ...thStyle('_'), width: '90px', cursor: 'default' }}></th>
               <th style={thStyle('project')} onClick={() => handleSort('project')}>Project{arrow('project')}</th>
               <th style={thStyle('title')} onClick={() => handleSort('title')}>Title{arrow('title')}</th>
               <th style={thStyle('assignee')} onClick={() => handleSort('assignee')}>Assignee{arrow('assignee')}</th>
@@ -490,16 +490,16 @@ function TicketTable({ projects }) {
                   background: i % 2 === 0 ? 'transparent' : 'var(--surface2)',
                 }}>
                   {/* Thumbnail */}
-                  <td style={{ padding: '6px 8px', width: '50px' }}>
+                  <td style={{ padding: '6px 8px', width: '90px' }}>
                     {item.thumbnail ? (
                       <a href={item.url || '#'} target="_blank" rel="noreferrer">
                         <img src={item.thumbnail} alt="" style={{
-                          width: '40px', height: '28px', objectFit: 'cover', borderRadius: '3px',
+                          width: '80px', height: '50px', objectFit: 'cover', borderRadius: '3px',
                           border: '1px solid var(--border)',
                         }} onError={e => { e.target.style.display = 'none'; }} />
                       </a>
                     ) : (
-                      <div style={{ width: '40px', height: '28px', background: 'var(--surface2)', borderRadius: '3px' }} />
+                      <div style={{ width: '80px', height: '50px', background: 'var(--surface2)', borderRadius: '3px' }} />
                     )}
                   </td>
 
@@ -513,11 +513,13 @@ function TicketTable({ projects }) {
                     {item.url ? (
                       <a href={item.url} target="_blank" rel="noreferrer" style={{
                         color: 'var(--text)', textDecoration: 'none',
+                        fontSize: '15px', fontWeight: '500',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         display: 'block',
                       }} title={item.title}>{item.title}</a>
                     ) : (
                       <span style={{
+                        fontSize: '15px', fontWeight: '500',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         display: 'block',
                       }} title={item.title}>{item.title}</span>
