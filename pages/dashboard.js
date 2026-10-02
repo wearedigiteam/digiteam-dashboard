@@ -399,25 +399,29 @@ export default function Dashboard() {
 
   const [filter, setFilterState]           = useState('all');
   const [assigneeFilter, setAssigneeState] = useState('all');
+  const [projectFilter, setProjectState]   = useState('all');
 
   // Read query params on mount
   useEffect(() => {
     if (!router.isReady) return;
-    const { status, team } = router.query;
+    const { status, team, project } = router.query;
     if (status && FILTER_CONFIG[status]) setFilterState(status);
     if (team) setAssigneeState(team);
+    if (project) setProjectState(project);
   }, [router.isReady, router.query]);
 
-  function updateURL(status, team) {
+  function updateURL(status, team, project) {
     const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
     if (team && team !== 'all') params.set('team', team);
+    if (project && project !== 'all') params.set('project', project);
     const qs = params.toString();
     router.replace(qs ? `/dashboard?${qs}` : '/dashboard', undefined, { shallow: true });
   }
 
-  function setFilter(val) { setFilterState(val); updateURL(val, assigneeFilter); }
-  function setAssigneeFilter(val) { setAssigneeState(val); updateURL(filter, val); }
+  function setFilter(val) { setFilterState(val); updateURL(val, assigneeFilter, projectFilter); }
+  function setAssigneeFilter(val) { setAssigneeState(val); updateURL(filter, val, projectFilter); }
+  function setProjectFilter(val) { setProjectState(val); updateURL(filter, assigneeFilter, val); }
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
@@ -508,7 +512,11 @@ export default function Dashboard() {
     return { ...project, totalActive: total, data: { ...d, open, inProgress, onHold, resolvedThisWeek, total } };
   }
 
+  // Project names for dropdown
+  const projectNames = (data?.projects || []).map(p => p.name).sort();
+
   const filteredProjects = (data?.projects || [])
+    .filter(p => projectFilter === 'all' || p.name === projectFilter)
     .map(p => filterByAssignee(p, assigneeFilter))
     .filter(Boolean)
     .map(p => filterByStatus(p, filter))
@@ -587,9 +595,27 @@ export default function Dashboard() {
 
                 <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}><FilterLegend /></div>
 
-                {teamMembers.length > 0 && (
+                {/* Project filter */}
+                {projectNames.length > 0 && (
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: '4px',
+                    paddingLeft: '12px', borderLeft: '1px solid var(--border)',
+                  }}>
+                    <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Project:</label>
+                    <select className="dt-assignee-select" value={projectFilter} onChange={e => setProjectFilter(e.target.value)} style={{ minWidth: '150px' }}>
+                      <option value="all">All projects</option>
+                      {projectNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                    {projectFilter !== 'all' && (
+                      <button onClick={() => setProjectFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
+                    )}
+                  </div>
+                )}
+
+                {/* Team filter */}
+                {teamMembers.length > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
                     paddingLeft: '12px', borderLeft: '1px solid var(--border)',
                   }}>
                     <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Team:</label>
