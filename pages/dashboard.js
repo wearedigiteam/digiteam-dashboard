@@ -190,6 +190,20 @@ function sortByUrgency(items) {
 // ── Ticket row ───────────────────────────────────────────────────────────────
 const PREVIEW_COUNT = 3;
 
+function WorkflowBadge({ name, color }) {
+  if (!name) return null;
+  const bgColor = color ? `${color}20` : 'var(--surface2)';
+  const textColor = color || 'var(--muted)';
+  return (
+    <span style={{
+      fontSize: '11px', fontWeight: '600', padding: '2px 7px',
+      borderRadius: '4px', whiteSpace: 'nowrap',
+      background: bgColor, color: textColor,
+      border: `1px solid ${color ? `${color}40` : 'var(--border)'}`,
+    }}>{name}</span>
+  );
+}
+
 function TicketRow({ item, showProject }) {
   const lastModified = item.updatedAt || item.createdAt;
   const dateLabel = formatDate(lastModified);
@@ -202,8 +216,25 @@ function TicketRow({ item, showProject }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: '10px',
-      padding: '10px 0', borderBottom: '1px solid var(--border)',
+      padding: '8px 0', borderBottom: '1px solid var(--border)',
     }}>
+      {/* Thumbnail */}
+      {item.thumbnail && (
+        <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+          <img
+            src={item.thumbnail}
+            alt=""
+            style={{
+              width: '48px', height: '36px',
+              objectFit: 'cover', borderRadius: '4px',
+              border: '1px solid var(--border)',
+              background: 'var(--surface2)',
+            }}
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        </a>
+      )}
+
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {item.url ? (
@@ -220,21 +251,22 @@ function TicketRow({ item, showProject }) {
             }} title={item.title}>{item.title}</span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
           {dateLabel && (
             <span style={{
-              fontSize: '13px', fontFamily: 'var(--mono)',
+              fontSize: '12px', fontFamily: 'var(--mono)',
               color: agingStyle.color, background: agingStyle.bg,
-              padding: aging !== 'ok' ? '1px 8px' : '0',
+              padding: aging !== 'ok' ? '1px 6px' : '0',
               borderRadius: '4px', whiteSpace: 'nowrap',
             }}>{dateLabel}</span>
           )}
+          <WorkflowBadge name={item.workflowName} color={item.workflowColor} />
           {showProject && item._projectName && (
-            <span style={{ fontSize: '12px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 8px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 6px', borderRadius: '4px' }}>
               {item._projectName}
             </span>
           )}
-          {assigneeLabel && <span style={{ fontSize: '13px', color: 'var(--muted2)' }}>{assigneeLabel}</span>}
+          {assigneeLabel && <span style={{ fontSize: '12px', color: 'var(--muted2)' }}>{assigneeLabel}</span>}
           <PriorityBadge priority={item.priority} color={item.priorityColor} />
           <TypeTag type={item.feedbackType} />
         </div>
@@ -435,11 +467,14 @@ export default function Dashboard() {
   // ── Team members (from Userback API directly) ──
   const teamMembers = (data?.teamMembers || []).map(m => m.name);
 
-  // ── Assignee filtering ──
-  function filterByAssignee(project, displayName) {
-    if (!displayName || displayName === 'all') return project;
+  // ── Assignee filtering (supports "unassigned") ──
+  function filterByAssignee(project, filterValue) {
+    if (!filterValue || filterValue === 'all') return project;
 
-    const filterItems = items => (items || []).filter(item => item.assignee === displayName);
+    const filterItems = filterValue === 'unassigned'
+      ? items => (items || []).filter(item => !item.assignee || /^\d+$/.test(item.assignee))
+      : items => (items || []).filter(item => item.assignee === filterValue);
+
     const d = project.data;
     if (!d) return null;
     const open = filterItems(d.open);
@@ -566,6 +601,7 @@ export default function Dashboard() {
                     <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Team:</label>
                     <select className="dt-assignee-select" value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={{ minWidth: '150px' }}>
                       <option value="all">Everyone</option>
+                      <option value="unassigned">Unassigned</option>
                       {teamMembers.map(name => <option key={name} value={name}>{name}</option>)}
                     </select>
                     {assigneeFilter !== 'all' && (
