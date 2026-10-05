@@ -151,3 +151,37 @@ input, select, textarea {
   .dt-assignee-select { min-width: 120px; font-size: 13px; }
 }
 
+
+/* ═══ AI response styling ═══ */
+.dt-ai-response h2 {
+  font-size: 17px; font-weight: 600; color: var(--text);
+  margin: 20px 0 8px 0; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.dt-ai-response h2:first-child { margin-top: 0; }
+.dt-ai-response h3 {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  margin: 16px 0 6px 0;
+}
+.dt-ai-response p {
+  margin: 6px 0; line-height: 1.6;
+}
+.dt-ai-response ul {
+  margin: 6px 0; padding-left: 20px;
+}
+.dt-ai-response li {
+  margin: 6px 0; line-height: 1.5;
+}
+.dt-ai-response a {
+  color: var(--orange); text-decoration: none; font-weight: 500;
+}
+.dt-ai-response a:hover {
+  text-decoration: underline;
+}
+.dt-ai-response strong {
+  color: var(--text); font-weight: 600;
+}
+.dt-ai-response hr {
+  border: none; border-top: 1px solid var(--border);
+  margin: 16px 0;
+}

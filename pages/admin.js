@@ -25,22 +25,21 @@ function DigiteamLogo({ size = 28 }) {
 
 function GasGauge({ credit, annual }) {
   if (!annual || annual <= 0) return null;
-  const totalBars = Math.ceil(annual / 1000);
-  const filledBars = Math.min(Math.floor((credit || 0) / 1000), totalBars);
-  const pct = totalBars > 0 ? filledBars / totalBars : 0;
+  const pct = Math.min((credit || 0) / annual, 1);
   const color = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{ display: 'flex', gap: '2px' }}>
-        {Array.from({ length: totalBars }, (_, i) => (
-          <div key={i} style={{
-            width: '8px', height: '20px', borderRadius: '2px',
-            background: i < filledBars ? color : 'var(--border)',
-          }} />
-        ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{
+        width: '120px', height: '12px', borderRadius: '6px',
+        background: 'var(--border)', overflow: 'hidden',
+      }}>
+        <div style={{
+          width: `${pct * 100}%`, height: '100%', borderRadius: '6px',
+          background: color, transition: 'width 0.3s',
+        }} />
       </div>
-      <span style={{ fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
+      <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
         ${(credit || 0).toLocaleString()} / ${annual.toLocaleString()}
       </span>
     </div>

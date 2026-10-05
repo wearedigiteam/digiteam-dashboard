@@ -47,7 +47,8 @@ export default async function handler(req, res) {
         const workflow = t.workflowName || t._section;
         const type = t.feedbackType ? `(${t.feedbackType})` : '';
         const desc = t.description ? ` — ${t.description.slice(0, 120)}` : '';
-        contextLines.push(`- ${t.title}${desc} | ${workflow} | ${assignee} | ${priority} ${type} | ${age}`);
+        const url = t.url || '';
+        contextLines.push(`- ${t.title} [URL: ${url}]${desc} | ${workflow} | ${assignee} | ${priority} ${type} | ${age}`);
       }
     }
   }
@@ -61,7 +62,11 @@ Your job is to help the team prioritize work, identify what to tackle next, esti
 - Quick wins vs longer tasks
 - Logical groupings (multiple tickets in the same project)
 
-Keep responses concise and scannable — use bullet points. Don't be generic.
+IMPORTANT FORMATTING RULES:
+- Respond in clean HTML (no markdown). Use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> tags.
+- When referencing a ticket, wrap the title in an <a> tag linking to its Userback URL (provided in the data as [URL: ...]). Example: <a href="https://app.userback.io/..." target="_blank">Ticket title</a>
+- Use <span> tags with inline styles for priority badges: <span style="background:#c02020;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px">Critical</span>
+- Keep responses concise and scannable. Don't be generic.
 
 Current ticket data:
 ${contextLines.join('\n')}`;

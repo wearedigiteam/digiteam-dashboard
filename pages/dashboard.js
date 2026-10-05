@@ -36,20 +36,20 @@ function UserbackIcon({ size = 16 }) {
 function GasGauge({ budget }) {
   if (!budget || !budget.annual || budget.annual <= 0) return null;
   const { credit = 0, annual } = budget;
-  const totalBars = Math.ceil(annual / 1000);
-  const filledBars = Math.min(Math.floor(credit / 1000), totalBars);
-  const pct = totalBars > 0 ? filledBars / totalBars : 0;
+  const pct = Math.min(credit / annual, 1);
   const color = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }} title={`$${credit.toLocaleString()} of $${annual.toLocaleString()} credit remaining`}>
-      <div style={{ display: 'flex', gap: '1.5px' }}>
-        {Array.from({ length: totalBars }, (_, i) => (
-          <div key={i} style={{
-            width: '6px', height: '16px', borderRadius: '1.5px',
-            background: i < filledBars ? color : 'var(--border)',
-          }} />
-        ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
+      title={`$${credit.toLocaleString()} of $${annual.toLocaleString()} credit remaining`}>
+      <div style={{
+        width: '80px', height: '10px', borderRadius: '5px',
+        background: 'var(--border)', overflow: 'hidden',
+      }}>
+        <div style={{
+          width: `${pct * 100}%`, height: '100%', borderRadius: '5px',
+          background: color, transition: 'width 0.3s',
+        }} />
       </div>
       <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
         ${credit.toLocaleString()}
@@ -467,7 +467,7 @@ function NeedsAttentionPanel({ projects }) {
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderLeft: '4px solid #e53935', borderRadius: '10px',
-      padding: '20px',
+      padding: '20px', marginBottom: '20px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Needs attention</span>
@@ -1087,13 +1087,15 @@ export default function Dashboard() {
                     )}
 
                     {aiReply && !aiLoading && (
-                      <div style={{
-                        padding: '16px', fontSize: '14px', color: 'var(--text)',
-                        lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                        maxHeight: '400px', overflowY: 'auto',
-                      }}>
-                        {aiReply}
-                      </div>
+                      <div
+                        className="dt-ai-response"
+                        style={{
+                          padding: '16px', fontSize: '14px', color: 'var(--text)',
+                          lineHeight: 1.6,
+                          maxHeight: '500px', overflowY: 'auto',
+                        }}
+                        dangerouslySetInnerHTML={{ __html: aiReply }}
+                      />
                     )}
 
                     {/* Input */}
