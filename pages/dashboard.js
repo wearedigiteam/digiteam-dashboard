@@ -32,6 +32,32 @@ function UserbackIcon({ size = 16 }) {
   );
 }
 
+// ── Gas gauge (budget indicator) ──────────────────────────────────────────────
+function GasGauge({ budget }) {
+  if (!budget || !budget.annual || budget.annual <= 0) return null;
+  const { credit = 0, annual } = budget;
+  const totalBars = Math.ceil(annual / 1000);
+  const filledBars = Math.min(Math.floor(credit / 1000), totalBars);
+  const pct = totalBars > 0 ? filledBars / totalBars : 0;
+  const color = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }} title={`$${credit.toLocaleString()} of $${annual.toLocaleString()} credit remaining`}>
+      <div style={{ display: 'flex', gap: '1.5px' }}>
+        {Array.from({ length: totalBars }, (_, i) => (
+          <div key={i} style={{
+            width: '6px', height: '16px', borderRadius: '1.5px',
+            background: i < filledBars ? color : 'var(--border)',
+          }} />
+        ))}
+      </div>
+      <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+        ${credit.toLocaleString()}
+      </span>
+    </div>
+  );
+}
+
 // ── Aging helpers ─────────────────────────────────────────────────────────────
 function getDaysSince(dateStr) {
   if (!dateStr) return null;
@@ -476,6 +502,7 @@ function ProjectCard({ project }) {
           <span style={{ fontSize: '17px', fontWeight: '600', color: 'var(--text)' }}>{project.name}</span>
         </div>
         <div className="dt-card-meta">
+          <GasGauge budget={project.budget} />
           <span style={{
             fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted2)',
             background: 'var(--surface2)', padding: '3px 10px', borderRadius: '6px',
@@ -871,6 +898,7 @@ export default function Dashboard() {
           </div>
           <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
             <button onClick={() => router.push('/dashboard')} style={{ background: 'rgba(247,173,57,0.15)', color: '#f7ad39', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Dashboard</button>
+            <button onClick={() => router.push('/admin')} style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Admin</button>
           </nav>
           <div style={{ flex: 1 }} />
           <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

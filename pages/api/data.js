@@ -1,5 +1,6 @@
 import { getTokenFromRequest, verifyToken } from '../../lib/auth';
 import { fetchAllProjects, fetchProjectTasks, computeHealth, getTeamMembers } from '../../lib/userback';
+import { kv } from '@vercel/kv';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -10,14 +11,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Auto-discover all non-archived Userback projects
-    const projects = await fetchAllProjects();
+    // Auto-discover projects and fetch budget config
+    const [projects, budgets] = await Promise.all([
+      fetchAllProjects(),
+      kv.get('budgets').catch(() => ({})),
+    ]);
 
-    // Fetch data for each project sequentially
+    // Fetch Userback data sequentially
     const results = [];
     for (const project of projects) {
       const data = await fetchProjectTasks(project.id);
       const health = computeHealth(data);
+      const budget = (budgets || {})[project.id] || null;
 
       results.push({
         name: project.name,
@@ -25,15 +30,13 @@ export default async function handler(req, res) {
         health,
         totalActive: data?.total || 0,
         data,
+        budget,
       });
 
       await delay(200);
     }
 
-    // Sort alphabetically
     results.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Team members (auto-populated from Userback)
     const teamMembers = getTeamMembers();
 
     return res.status(200).json({
