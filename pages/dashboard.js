@@ -35,24 +35,32 @@ function UserbackIcon({ size = 16 }) {
 // ── Gas gauge (budget indicator) ──────────────────────────────────────────────
 function GasGauge({ budget }) {
   if (!budget || !budget.annual || budget.annual <= 0) return null;
-  const { credit = 0, annual } = budget;
-  const pct = Math.min(credit / annual, 1);
-  const color = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
+  const { annual } = budget;
+  const used      = budget.used || 0;
+  const remaining = annual - used;
+  const over      = remaining < 0;
+  const pct       = Math.max(0, Math.min(remaining / annual, 1));
+  const color     = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
-      title={`$${credit.toLocaleString()} of $${annual.toLocaleString()} credit remaining`}>
+      title={over
+        ? `$${used.toLocaleString()} used of $${annual.toLocaleString()} — $${Math.abs(remaining).toLocaleString()} over budget`
+        : `$${used.toLocaleString()} used of $${annual.toLocaleString()} — $${remaining.toLocaleString()} left`}>
       <div style={{
         width: '80px', height: '10px', borderRadius: '5px',
-        background: 'var(--border)', overflow: 'hidden',
+        background: over ? '#c0202033' : 'var(--border)', overflow: 'hidden',
       }}>
         <div style={{
           width: `${pct * 100}%`, height: '100%', borderRadius: '5px',
           background: color, transition: 'width 0.3s',
         }} />
       </div>
-      <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-        ${credit.toLocaleString()}
+      <span style={{
+        fontSize: '11px', fontFamily: 'var(--mono)', whiteSpace: 'nowrap',
+        color: over ? '#c02020' : 'var(--muted)', fontWeight: over ? '600' : '400',
+      }}>
+        {over ? `-$${Math.abs(remaining).toLocaleString()}` : `$${remaining.toLocaleString()}`}
       </span>
     </div>
   );

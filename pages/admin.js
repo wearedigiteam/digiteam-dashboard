@@ -23,24 +23,34 @@ function DigiteamLogo({ size = 28 }) {
   );
 }
 
-function GasGauge({ credit, annual }) {
+// Gauge shows what's left of the annual budget: (annual - used) / annual
+function GasGauge({ used, annual }) {
   if (!annual || annual <= 0) return null;
-  const pct = Math.min((credit || 0) / annual, 1);
-  const color = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
+  const spent     = used || 0;
+  const remaining = annual - spent;
+  const over      = remaining < 0;
+  const pct       = Math.max(0, Math.min(remaining / annual, 1));
+  const color     = pct > 0.5 ? '#2d8a4e' : pct > 0.25 ? '#e07020' : '#c02020';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+      title={`$${spent.toLocaleString()} used of $${annual.toLocaleString()}`}>
       <div style={{
         width: '120px', height: '12px', borderRadius: '6px',
-        background: 'var(--border)', overflow: 'hidden',
+        background: over ? '#c0202033' : 'var(--border)', overflow: 'hidden',
       }}>
         <div style={{
           width: `${pct * 100}%`, height: '100%', borderRadius: '6px',
           background: color, transition: 'width 0.3s',
         }} />
       </div>
-      <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--muted)' }}>
-        ${(credit || 0).toLocaleString()} / ${annual.toLocaleString()}
+      <span style={{
+        fontSize: '13px', fontFamily: 'var(--mono)',
+        color: over ? '#c02020' : 'var(--muted)', fontWeight: over ? '600' : '400',
+      }}>
+        {over
+          ? `$${Math.abs(remaining).toLocaleString()} over`
+          : `$${remaining.toLocaleString()} left`}
       </span>
     </div>
   );
@@ -79,10 +89,19 @@ export default function Admin() {
     setBudgets(prev => ({
       ...prev,
       [projectId]: {
-        ...(prev[projectId] || { credit: 0, annual: 0 }),
+        ...(prev[projectId] || { used: 0, annual: 0 }),
         [field]: parseFloat(value) || 0,
       },
     }));
+  }
+
+  // Strip the old "credit on hand" field so only annual + used are stored
+  function cleanBudgets(all) {
+    const out = {};
+    for (const [id, b] of Object.entries(all)) {
+      out[id] = { annual: b.annual || 0, used: b.used || 0 };
+    }
+    return out;
   }
 
   async function saveBudgets() {
@@ -91,7 +110,7 @@ export default function Admin() {
       const res = await fetch('/api/admin/budgets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ budgets }),
+        body: JSON.stringify({ budgets: cleanBudgets(budgets) }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -146,7 +165,7 @@ export default function Admin() {
             Maintenance budgets
           </h1>
           <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '28px' }}>
-            Set the annual maintenance budget and current credit balance for each project. Each bar on the gauge represents $1,000.
+            Set each project's annual budget and the total invoiced so far this year. The gauge shows what's left.
           </p>
 
           {loading && (
@@ -169,7 +188,7 @@ export default function Admin() {
                 display: 'grid', gridTemplateColumns: '1fr 140px 140px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
-                {['Project', 'Annual budget', 'Credit on hand', 'Gauge'].map((h, i) => (
+                {['Project', 'Annual budget', 'Budget used', 'Remaining'].map((h, i) => (
                   <div key={i} style={{
                     fontSize: '12px', color: 'var(--muted)', fontWeight: '600',
                     textTransform: 'uppercase', letterSpacing: '0.5px',
@@ -179,7 +198,7 @@ export default function Admin() {
               </div>
 
               {projects.map(project => {
-                const b = budgets[project.userbackId] || { credit: 0, annual: 0 };
+                const b = budgets[project.userbackId] || { used: 0, annual: 0 };
                 return (
                   <div key={project.userbackId} style={{
                     display: 'grid', gridTemplateColumns: '1fr 140px 140px 1fr',
@@ -204,15 +223,15 @@ export default function Admin() {
                     <div>
                       <input
                         type="number"
-                        value={b.credit || ''}
-                        onChange={e => updateBudget(project.userbackId, 'credit', e.target.value)}
+                        value={b.used || ''}
+                        onChange={e => updateBudget(project.userbackId, 'used', e.target.value)}
                         placeholder="0"
                         min="0"
                         step="100"
                         style={inputStyle}
                       />
                     </div>
-                    <GasGauge credit={b.credit} annual={b.annual} />
+                    <GasGauge used={b.used} annual={b.annual} />
                   </div>
                 );
               })}
