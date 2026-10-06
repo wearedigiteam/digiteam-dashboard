@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
+import ThemeToggle from '../components/ThemeToggle';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
@@ -91,11 +92,11 @@ const AGING_STYLES = {
 
 // ── Ticket filter config (ticket-centric, not project-centric) ───────────────
 const FILTER_CONFIG = {
-  all:        { label: 'All',         color: 'var(--dt-navy)',             bg: 'var(--dt-navy)',              textActive: '#fff' },
+  all:        { label: 'All',         color: 'var(--ink)',                 bg: 'var(--ink)',                  textActive: 'var(--ink-contrast)' },
   onhold:     { label: 'On Hold',     color: 'var(--status-blocked-dot)',  bg: 'var(--status-blocked-bg)',    textActive: 'var(--status-blocked-text)' },
   inprogress: { label: 'In Progress', color: 'var(--status-inflight-dot)', bg: 'var(--status-inflight-bg)',   textActive: 'var(--status-inflight-text)' },
   open:       { label: 'Open',        color: 'var(--muted)',               bg: 'var(--surface2)',             textActive: 'var(--text)' },
-  aging:      { label: 'Aging 30+',   color: '#e07020',                    bg: '#fff3e0',                    textActive: '#e07020' },
+  aging:      { label: 'Aging 30+',   color: '#e07020',                    bg: 'var(--aging-bg)',            textActive: '#e07020' },
   resolved:   { label: 'Resolved',    color: 'var(--green)',               bg: 'var(--status-active-bg)',     textActive: 'var(--green)' },
 };
 
@@ -167,7 +168,7 @@ function FilterLegend() {
             position: 'fixed', top: pos.top, left: pos.left,
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '20px', width: '380px', maxWidth: 'calc(100vw - 24px)',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', zIndex: 1000,
+            boxShadow: '0 8px 30px var(--shadow)', zIndex: 1000,
           }}>
             <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', marginBottom: '14px' }}>
               Ticket filters
@@ -483,7 +484,7 @@ function NeedsAttentionPanel({ projects }) {
         <span style={{ fontSize: '14px', color: 'var(--muted)' }}>ticket{aging.length !== 1 ? 's' : ''} untouched for 30+ days</span>
       </div>
       {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="#fcebeb" showProject />}
-      {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="#fff3e0" showProject />}
+      {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="var(--aging-bg)" showProject />}
     </div>
   );
 }
@@ -910,6 +911,7 @@ export default function Dashboard() {
           </nav>
           <div style={{ flex: 1 }} />
           <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <ThemeToggle />
             {lastFetch && <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--mono)' }}>{lastFetch.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}</span>}
             <button onClick={fetchData} disabled={loading} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: loading ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500' }}>{loading ? '⟳' : '↺ Refresh'}</button>
             <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
@@ -956,8 +958,8 @@ export default function Dashboard() {
                       borderLeft: key !== 'all' ? `4px solid ${cfg.color}` : undefined,
                       opacity: count === 0 && key !== 'all' ? 0.5 : 1,
                     }}>
-                      <div className="dt-status-num" style={{ color: isActive && key === 'all' ? '#fff' : cfg.color }}>{count}</div>
-                      <div className="dt-status-label" style={{ color: isActive && key === 'all' ? 'rgba(255,255,255,0.6)' : (isActive ? cfg.textActive : 'var(--muted)') }}>{cfg.label}</div>
+                      <div className="dt-status-num" style={{ color: isActive && key === 'all' ? 'var(--ink-contrast)' : cfg.color }}>{count}</div>
+                      <div className="dt-status-label" style={{ color: isActive && key === 'all' ? 'var(--ink-contrast)' : (isActive ? cfg.textActive : 'var(--muted)'), opacity: isActive && key === 'all' ? 0.7 : 1 }}>{cfg.label}</div>
                     </button>
                   );
                 })}

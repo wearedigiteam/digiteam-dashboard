@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
+import ThemeToggle from '../components/ThemeToggle';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
@@ -205,6 +206,7 @@ export default function Admin() {
             }}>Admin</button>
           </nav>
           <div style={{ flex: 1 }} />
+          <ThemeToggle />
           <button onClick={() => router.push('/dashboard')} style={{
             background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
             color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: '500', padding: '6px 14px',
