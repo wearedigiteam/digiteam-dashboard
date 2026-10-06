@@ -101,12 +101,18 @@ const FILTER_CONFIG = {
 };
 
 // ── Reusable components ──────────────────────────────────────────────────────
+// Userback supplies its own badge colours, tuned for light backgrounds.
+// In dark mode, --badge-lift mixes in white so dark purples/blues stay readable.
+function liftColor(color) {
+  return `color-mix(in srgb, ${color}, #fff var(--badge-lift, 0%))`;
+}
+
 function PriorityBadge({ priority, color }) {
   if (!priority || priority === 'None') return null;
   return (
     <span style={{
       fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '4px',
-      whiteSpace: 'nowrap', background: `${color}18`, color,
+      whiteSpace: 'nowrap', background: `${color}18`, color: liftColor(color),
       textTransform: 'uppercase', letterSpacing: '0.3px',
     }}>{priority}</span>
   );
@@ -115,9 +121,9 @@ function PriorityBadge({ priority, color }) {
 function TypeTag({ type }) {
   if (!type) return null;
   const colors = {
-    bug: { bg: '#fcebeb', text: '#a32d2d' },
-    task: { bg: '#e6f1fb', text: '#185fa5' },
-    feature: { bg: '#e1f5ee', text: '#0f6e56' },
+    bug:     { bg: 'var(--status-blocked-bg)',  text: 'var(--status-blocked-text)' },
+    task:    { bg: 'var(--status-inflight-bg)', text: 'var(--status-inflight-text)' },
+    feature: { bg: 'var(--status-active-bg)',   text: 'var(--status-active-text)' },
   };
   const c = colors[(type || '').toLowerCase()] || { bg: 'var(--surface2)', text: 'var(--muted)' };
   return (
@@ -128,7 +134,7 @@ function TypeTag({ type }) {
 function WorkflowBadge({ name, color }) {
   if (!name) return null;
   const bgColor = color ? `${color}20` : 'var(--surface2)';
-  const textColor = color || 'var(--muted)';
+  const textColor = color ? liftColor(color) : 'var(--muted)';
   return (
     <span style={{
       fontSize: '11px', fontWeight: '600', padding: '2px 7px',
@@ -483,7 +489,7 @@ function NeedsAttentionPanel({ projects }) {
         <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: '#e53935', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{aging.length}</span>
         <span style={{ fontSize: '14px', color: 'var(--muted)' }}>ticket{aging.length !== 1 ? 's' : ''} untouched for 30+ days</span>
       </div>
-      {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="#fcebeb" showProject />}
+      {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="var(--status-blocked-bg)" showProject />}
       {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="var(--aging-bg)" showProject />}
     </div>
   );

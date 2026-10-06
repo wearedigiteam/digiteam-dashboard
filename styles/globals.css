@@ -58,6 +58,7 @@
   --ink-contrast: #ffffff;   /* text on --ink */
   --aging-bg:     #fff3e0;
   --shadow:       rgba(0,0,0,0.12);
+  --badge-lift:   0%;
   color-scheme: light;
 }
 
@@ -93,6 +94,7 @@ html[data-theme="dark"] {
   --ink-contrast: #14141f;
   --aging-bg:     #3a2714;
   --shadow:       rgba(0,0,0,0.5);
+  --badge-lift:   45%;
 }
 html[data-theme="dark"] .dt-header { border-bottom: 1px solid var(--border); }
 
