@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
+import ThumbPreview from '../components/ThumbPreview';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
@@ -362,12 +363,8 @@ function TicketRow({ item, showProject }) {
         padding: '7px 0',
       }}>
         {item.thumbnail && (
-          <a href={item.url || '#'} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-            <img src={item.thumbnail} alt="" style={{
-              width: '120px', height: '75px', objectFit: 'cover', borderRadius: '4px',
-              border: '1px solid var(--border)', background: 'var(--surface2)',
-            }} onError={e => { e.target.style.display = 'none'; }} />
-          </a>
+          <ThumbPreview thumb={item.thumbnail} full={item.image} href={item.url}
+            width="120px" height="75px" />
         )}
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -674,12 +671,8 @@ function TableRow({ item, index }) {
       }}>
         <td style={{ padding: '6px 8px', width: '90px' }}>
           {item.thumbnail ? (
-            <a href={item.url || '#'} target="_blank" rel="noreferrer">
-              <img src={item.thumbnail} alt="" style={{
-                width: '80px', height: '50px', objectFit: 'cover', borderRadius: '3px',
-                border: '1px solid var(--border)',
-              }} onError={e => { e.target.style.display = 'none'; }} />
-            </a>
+            <ThumbPreview thumb={item.thumbnail} full={item.image} href={item.url}
+              width="80px" height="50px" radius="3px" />
           ) : (
             <div style={{ width: '80px', height: '50px', background: 'var(--surface2)', borderRadius: '3px' }} />
           )}
