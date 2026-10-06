@@ -39,7 +39,13 @@ export default async function handler(req, res) {
     return res.status(200).json({ skipped: 'Already sent today' });
   }
 
-  const results = await runWeeklySlack();
+  let results;
+  try {
+    results = await runWeeklySlack();
+  } catch (err) {
+    console.error('Weekly Slack failed:', err);
+    return res.status(500).json({ error: err.message });
+  }
   if (results.sent.length > 0) {
     await kv.set(sentKey, new Date().toISOString(), { ex: 60 * 60 * 24 * 7 }).catch(() => {});
   }

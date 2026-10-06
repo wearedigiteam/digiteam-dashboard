@@ -164,7 +164,7 @@ export default function Admin() {
       const res = await fetch('/api/admin/slack-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, slackId: (slack[userId]?.slackId || '').trim() }),
       });
       const d = await res.json();
       setTestState(prev => ({ ...prev, [userId]: { ok: d.ok, message: d.message } }));
@@ -304,7 +304,7 @@ export default function Admin() {
               <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '28px' }}>
                 Each person switched on gets a Slack DM before the production meeting with their own open items.
                 Paste their Slack member ID (in Slack: their profile, then the ⋮ menu, then Copy member ID).
-                Leave it blank to match by email. Save before sending a test. Tests send a real DM to that person.
+                Leave it blank to match by email. Send test uses the ID shown here, saved or not, and sends a real DM to that person.
               </p>
 
               {slackError && (
