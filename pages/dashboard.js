@@ -35,6 +35,9 @@ function UserbackIcon({ size = 16 }) {
 }
 
 // ── Gas gauge (budget indicator) ──────────────────────────────────────────────
+const cad      = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+const cadWhole = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+
 function GasGauge({ budget }) {
   if (!budget || !budget.annual || budget.annual <= 0) return null;
   const { annual } = budget;
@@ -47,8 +50,8 @@ function GasGauge({ budget }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
       title={over
-        ? `$${used.toLocaleString()} +HST used of $${annual.toLocaleString()} +HST — $${Math.abs(remaining).toLocaleString()} +HST over budget`
-        : `$${used.toLocaleString()} +HST used of $${annual.toLocaleString()} +HST — $${remaining.toLocaleString()} +HST left`}>
+        ? `${cad.format(used)} used of ${cad.format(annual)}, ${cad.format(Math.abs(remaining))} over budget (excl. HST)`
+        : `${cad.format(used)} used of ${cad.format(annual)}, ${cad.format(remaining)} left (excl. HST)`}>
       <div style={{
         width: '80px', height: '10px', borderRadius: '5px',
         background: over ? '#c0202033' : 'var(--border)', overflow: 'hidden',
@@ -62,7 +65,7 @@ function GasGauge({ budget }) {
         fontSize: '11px', fontFamily: 'var(--mono)', whiteSpace: 'nowrap',
         color: over ? '#c02020' : 'var(--muted)', fontWeight: over ? '600' : '400',
       }}>
-        {over ? `-$${Math.abs(remaining).toLocaleString()} +HST` : `$${remaining.toLocaleString()} +HST`}
+        {over ? `-${cadWhole.format(Math.abs(remaining))}` : cadWhole.format(remaining)}
       </span>
     </div>
   );

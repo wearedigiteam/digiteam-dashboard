@@ -24,6 +24,38 @@ function DigiteamLogo({ size = 28 }) {
   );
 }
 
+// ── Currency formatting (all budget figures are before HST) ──────────────────
+const cad = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+const fmt = n => cad.format(Number(n) || 0);
+
+// Shows "$28,800.00" normally; switches to the plain number while editing
+function CurrencyInput({ value, onChange, label, style }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      aria-label={label}
+      value={editing ? draft : (value ? fmt(value) : '')}
+      placeholder={fmt(0)}
+      onFocus={e => {
+        setDraft(value ? String(value) : '');
+        setEditing(true);
+        requestAnimationFrame(() => e.target.select());
+      }}
+      onChange={e => {
+        const raw = e.target.value.replace(/[^0-9.]/g, '');  // accept pasted "$1,234.56"
+        setDraft(raw);
+        onChange(raw);
+      }}
+      onBlur={() => setEditing(false)}
+      style={style}
+    />
+  );
+}
+
 // Gauge shows what's left of the annual budget: (annual - used) / annual
 function GasGauge({ used, annual }) {
   if (!annual || annual <= 0) return null;
@@ -35,7 +67,7 @@ function GasGauge({ used, annual }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-      title={`$${spent.toLocaleString()} +HST used of $${annual.toLocaleString()} +HST`}>
+      title={`${fmt(spent)} used of ${fmt(annual)}`}>
       <div style={{
         width: '120px', height: '12px', borderRadius: '6px',
         background: over ? '#c0202033' : 'var(--border)', overflow: 'hidden',
@@ -46,12 +78,12 @@ function GasGauge({ used, annual }) {
         }} />
       </div>
       <span style={{
-        fontSize: '13px', fontFamily: 'var(--mono)',
+        fontSize: '13px', fontFamily: 'var(--mono)', whiteSpace: 'nowrap',
         color: over ? '#c02020' : 'var(--muted)', fontWeight: over ? '600' : '400',
       }}>
         {over
-          ? `$${Math.abs(remaining).toLocaleString()} +HST over`
-          : `$${remaining.toLocaleString()} +HST left`}
+          ? `${fmt(Math.abs(remaining))} over`
+          : `${fmt(remaining)} left`}
       </span>
     </div>
   );
@@ -218,8 +250,15 @@ export default function Admin() {
             Maintenance budgets
           </h1>
           <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '28px' }}>
-            Set each project's annual budget and the total invoiced so far this year. All amounts are before tax (+HST). The gauge shows what's left.
+            Set each project's annual budget and the total invoiced so far this year. The gauge shows what's left.
           </p>
+          <div style={{
+            fontSize: '14px', color: 'var(--text2)', background: 'var(--surface2)',
+            border: '1px solid var(--border)', borderLeft: '3px solid var(--amber)',
+            borderRadius: '8px', padding: '10px 14px', marginBottom: '28px', marginTop: '-12px',
+          }}>
+            All amounts exclude HST.
+          </div>
 
           {loading && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--muted)', fontSize: '15px' }}>
@@ -241,7 +280,7 @@ export default function Admin() {
                 display: 'grid', gridTemplateColumns: '1fr 160px 160px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
-                {['Project', 'Annual budget (+HST)', 'Budget used (+HST)', 'Remaining (+HST)'].map((h, i) => (
+                {['Project', 'Annual budget', 'Budget used', 'Remaining'].map((h, i) => (
                   <div key={i} style={{
                     fontSize: '12px', color: 'var(--muted)', fontWeight: '600',
                     textTransform: 'uppercase', letterSpacing: '0.5px',
@@ -263,24 +302,18 @@ export default function Admin() {
                       {project.name}
                     </div>
                     <div>
-                      <input
-                        type="number"
-                        value={b.annual || ''}
-                        onChange={e => updateBudget(project.userbackId, 'annual', e.target.value)}
-                        placeholder="0"
-                        min="0"
-                        step="1000"
+                      <CurrencyInput
+                        value={b.annual}
+                        onChange={v => updateBudget(project.userbackId, 'annual', v)}
+                        label={`Annual budget for ${project.name}`}
                         style={inputStyle}
                       />
                     </div>
                     <div>
-                      <input
-                        type="number"
-                        value={b.used || ''}
-                        onChange={e => updateBudget(project.userbackId, 'used', e.target.value)}
-                        placeholder="0"
-                        min="0"
-                        step="100"
+                      <CurrencyInput
+                        value={b.used}
+                        onChange={v => updateBudget(project.userbackId, 'used', v)}
+                        label={`Budget used for ${project.name}`}
                         style={inputStyle}
                       />
                     </div>
