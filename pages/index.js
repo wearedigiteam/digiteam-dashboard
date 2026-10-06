@@ -3,12 +3,20 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
 
-export async function getServerSideProps({ req }) {
+// Only allow redirects to paths on this site (blocks //evil.com and full URLs)
+function safeNext(next) {
+  if (typeof next !== 'string') return '/dashboard';
+  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return '/dashboard';
+  return next;
+}
+
+export async function getServerSideProps({ req, query }) {
+  const next = safeNext(query.next);
   const token = getTokenFromRequest(req);
   if (token && verifyToken(token)) {
-    return { redirect: { destination: '/dashboard', permanent: false } };
+    return { redirect: { destination: next, permanent: false } };
   }
-  return { props: {} };
+  return { props: { next } };
 }
 
 function DigiteamLogo({ size = 48 }) {
@@ -23,7 +31,7 @@ function DigiteamLogo({ size = 48 }) {
   );
 }
 
-export default function Login() {
+export default function Login({ next = '/dashboard' }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +46,7 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
-      if (res.ok) { router.push('/dashboard'); }
+      if (res.ok) { router.push(next); }
       else { setError('Incorrect password.'); setLoading(false); }
     } catch { setError('Something went wrong.'); setLoading(false); }
   }

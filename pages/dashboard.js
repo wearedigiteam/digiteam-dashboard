@@ -3,10 +3,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
 
-export async function getServerSideProps({ req }) {
+export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
   if (!token || !verifyToken(token)) {
-    return { redirect: { destination: '/', permanent: false } };
+    return { redirect: { destination: `/?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } };
   }
   return { props: {} };
 }

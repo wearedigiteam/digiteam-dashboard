@@ -3,10 +3,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
 
-export async function getServerSideProps({ req }) {
+export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
   if (!token || !verifyToken(token)) {
-    return { redirect: { destination: '/', permanent: false } };
+    return { redirect: { destination: `/?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } };
   }
   return { props: {} };
 }
@@ -65,20 +65,31 @@ export default function Admin() {
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState(null);
 
+  // Monday Slack summary
+  const [members, setMembers]             = useState([]);
+  const [slack, setSlack]                 = useState({});
+  const [slackSaving, setSlackSaving]     = useState(false);
+  const [slackSaved, setSlackSaved]       = useState(false);
+  const [slackError, setSlackError]       = useState(null);
+  const [testState, setTestState]         = useState({}); // { [userId]: { busy, ok, message } }
+
   useEffect(() => {
     async function loadData() {
       setLoading(true); setError(null);
       try {
-        const [dataRes, budgetRes] = await Promise.all([
+        const [dataRes, budgetRes, slackRes] = await Promise.all([
           fetch('/api/data'),
           fetch('/api/admin/budgets'),
+          fetch('/api/admin/slack-settings'),
         ]);
         if (dataRes.status === 401) { router.push('/'); return; }
-        const [dataJson, budgetJson] = await Promise.all([
-          dataRes.json(), budgetRes.json(),
+        const [dataJson, budgetJson, slackJson] = await Promise.all([
+          dataRes.json(), budgetRes.json(), slackRes.json(),
         ]);
         setProjects(dataJson.projects || []);
         setBudgets(budgetJson.budgets || {});
+        setMembers(dataJson.teamMembers || []);
+        setSlack(slackJson.settings || {});
       } catch (err) { setError(err.message); }
       finally { setLoading(false); }
     }
@@ -120,6 +131,46 @@ export default function Admin() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
+  }
+
+  function updateSlack(userId, field, value) {
+    setSlack(prev => ({
+      ...prev,
+      [userId]: { ...(prev[userId] || { slackId: '', enabled: false }), [field]: value },
+    }));
+    setSlackSaved(false);
+  }
+
+  async function saveSlack() {
+    setSlackSaving(true); setSlackError(null); setSlackSaved(false);
+    try {
+      const res = await fetch('/api/admin/slack-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: slack }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Save failed');
+      setSlack(d.settings);
+      setSlackSaved(true);
+      setTimeout(() => setSlackSaved(false), 3000);
+    } catch (err) { setSlackError(err.message); }
+    finally { setSlackSaving(false); }
+  }
+
+  async function sendTest(userId) {
+    setTestState(prev => ({ ...prev, [userId]: { busy: true } }));
+    try {
+      const res = await fetch('/api/admin/slack-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const d = await res.json();
+      setTestState(prev => ({ ...prev, [userId]: { ok: d.ok, message: d.message } }));
+    } catch (err) {
+      setTestState(prev => ({ ...prev, [userId]: { ok: false, message: err.message } }));
+    }
   }
 
   const inputStyle = {
@@ -244,6 +295,96 @@ export default function Admin() {
                   cursor: saving ? 'not-allowed' : 'pointer',
                 }}>{saving ? 'Saving...' : 'Save budgets'}</button>
                 {saved && <span style={{ fontSize: '14px', color: 'var(--green)', fontWeight: '500' }}>✓ Saved</span>}
+              </div>
+
+              {/* ── Monday Slack summary ─────────────────────────────── */}
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', margin: '48px 0 8px' }}>
+                Monday Slack summary
+              </h2>
+              <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '28px' }}>
+                Each person switched on gets a Slack DM before the production meeting with their own open items.
+                Paste their Slack member ID (in Slack: their profile, then the ⋮ menu, then Copy member ID).
+                Leave it blank to match by email. Save before sending a test. Tests send a real DM to that person.
+              </p>
+
+              {slackError && (
+                <div style={{ background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33', borderRadius: '10px', padding: '14px 18px', color: 'var(--red)', fontSize: '14px', marginBottom: '20px' }}>
+                  {slackError}
+                </div>
+              )}
+
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 180px 80px 1fr',
+                gap: '12px', padding: '0 16px 10px',
+              }}>
+                {['Person', 'Slack member ID', 'Send', ''].map((h, i) => (
+                  <div key={i} style={{
+                    fontSize: '12px', color: 'var(--muted)', fontWeight: '600',
+                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                    textAlign: i === 2 ? 'center' : 'left',
+                  }}>{h}</div>
+                ))}
+              </div>
+
+              {members.map(m => {
+                const s = slack[m.userId] || { slackId: '', enabled: false };
+                const t = testState[m.userId];
+                const badId = s.slackId && !/^[UW][A-Z0-9]{6,}$/i.test(s.slackId.trim());
+                return (
+                  <div key={m.userId} style={{
+                    display: 'grid', gridTemplateColumns: '1fr 180px 80px 1fr',
+                    gap: '12px', alignItems: 'center', padding: '12px 16px',
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: '10px', marginBottom: '8px',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text)' }}>{m.name}</div>
+                      {m.email && <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{m.email}</div>}
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        value={s.slackId}
+                        onChange={e => updateSlack(m.userId, 'slackId', e.target.value)}
+                        placeholder="Match by email"
+                        aria-label={`Slack member ID for ${m.name}`}
+                        style={{ ...inputStyle, textAlign: 'left', fontFamily: 'var(--mono)', fontSize: '14px',
+                          borderColor: badId ? 'var(--red)' : undefined }}
+                      />
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={s.enabled}
+                        onChange={e => updateSlack(m.userId, 'enabled', e.target.checked)}
+                        aria-label={`Send Monday summary to ${m.name}`}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button onClick={() => sendTest(m.userId)} disabled={t?.busy} style={{
+                        background: 'var(--surface2)', border: '1px solid var(--border2)',
+                        color: 'var(--text)', borderRadius: '6px', fontSize: '13px', fontWeight: '500',
+                        padding: '6px 12px', cursor: t?.busy ? 'not-allowed' : 'pointer', flexShrink: 0,
+                      }}>{t?.busy ? 'Sending...' : 'Send test'}</button>
+                      {t && !t.busy && (
+                        <span style={{ fontSize: '13px', color: t.ok ? 'var(--green)' : 'var(--red)' }}>
+                          {t.ok ? '✓ Sent' : t.message}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+                <button onClick={saveSlack} disabled={slackSaving} style={{
+                  background: slackSaving ? 'var(--border2)' : 'var(--orange)',
+                  border: 'none', color: '#fff', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: '600', padding: '10px 22px',
+                  cursor: slackSaving ? 'not-allowed' : 'pointer',
+                }}>{slackSaving ? 'Saving...' : 'Save Slack settings'}</button>
+                {slackSaved && <span style={{ fontSize: '14px', color: 'var(--green)', fontWeight: '500' }}>✓ Saved</span>}
               </div>
             </>
           )}
