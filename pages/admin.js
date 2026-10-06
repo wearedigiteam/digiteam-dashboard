@@ -34,7 +34,7 @@ function GasGauge({ used, annual }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-      title={`$${spent.toLocaleString()} used of $${annual.toLocaleString()}`}>
+      title={`$${spent.toLocaleString()} +HST used of $${annual.toLocaleString()} +HST`}>
       <div style={{
         width: '120px', height: '12px', borderRadius: '6px',
         background: over ? '#c0202033' : 'var(--border)', overflow: 'hidden',
@@ -49,8 +49,8 @@ function GasGauge({ used, annual }) {
         color: over ? '#c02020' : 'var(--muted)', fontWeight: over ? '600' : '400',
       }}>
         {over
-          ? `$${Math.abs(remaining).toLocaleString()} over`
-          : `$${remaining.toLocaleString()} left`}
+          ? `$${Math.abs(remaining).toLocaleString()} +HST over`
+          : `$${remaining.toLocaleString()} +HST left`}
       </span>
     </div>
   );
@@ -165,7 +165,7 @@ export default function Admin() {
             Maintenance budgets
           </h1>
           <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '28px' }}>
-            Set each project's annual budget and the total invoiced so far this year. The gauge shows what's left.
+            Set each project's annual budget and the total invoiced so far this year. All amounts are before tax (+HST). The gauge shows what's left.
           </p>
 
           {loading && (
@@ -185,10 +185,10 @@ export default function Admin() {
             <>
               {/* Column headers */}
               <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 140px 140px 1fr',
+                display: 'grid', gridTemplateColumns: '1fr 160px 160px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
-                {['Project', 'Annual budget', 'Budget used', 'Remaining'].map((h, i) => (
+                {['Project', 'Annual budget (+HST)', 'Budget used (+HST)', 'Remaining (+HST)'].map((h, i) => (
                   <div key={i} style={{
                     fontSize: '12px', color: 'var(--muted)', fontWeight: '600',
                     textTransform: 'uppercase', letterSpacing: '0.5px',
@@ -201,7 +201,7 @@ export default function Admin() {
                 const b = budgets[project.userbackId] || { used: 0, annual: 0 };
                 return (
                   <div key={project.userbackId} style={{
-                    display: 'grid', gridTemplateColumns: '1fr 140px 140px 1fr',
+                    display: 'grid', gridTemplateColumns: '1fr 160px 160px 1fr',
                     gap: '12px', alignItems: 'center', padding: '12px 16px',
                     background: 'var(--surface)', border: '1px solid var(--border)',
                     borderRadius: '10px', marginBottom: '8px',

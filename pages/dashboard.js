@@ -45,8 +45,8 @@ function GasGauge({ budget }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
       title={over
-        ? `$${used.toLocaleString()} used of $${annual.toLocaleString()} — $${Math.abs(remaining).toLocaleString()} over budget`
-        : `$${used.toLocaleString()} used of $${annual.toLocaleString()} — $${remaining.toLocaleString()} left`}>
+        ? `$${used.toLocaleString()} +HST used of $${annual.toLocaleString()} +HST — $${Math.abs(remaining).toLocaleString()} +HST over budget`
+        : `$${used.toLocaleString()} +HST used of $${annual.toLocaleString()} +HST — $${remaining.toLocaleString()} +HST left`}>
       <div style={{
         width: '80px', height: '10px', borderRadius: '5px',
         background: over ? '#c0202033' : 'var(--border)', overflow: 'hidden',
@@ -60,7 +60,7 @@ function GasGauge({ budget }) {
         fontSize: '11px', fontFamily: 'var(--mono)', whiteSpace: 'nowrap',
         color: over ? '#c02020' : 'var(--muted)', fontWeight: over ? '600' : '400',
       }}>
-        {over ? `-$${Math.abs(remaining).toLocaleString()}` : `$${remaining.toLocaleString()}`}
+        {over ? `-$${Math.abs(remaining).toLocaleString()} +HST` : `$${remaining.toLocaleString()} +HST`}
       </span>
     </div>
   );
@@ -412,8 +412,8 @@ function TicketRow({ item, showProject }) {
 }
 
 // ── Ticket section ───────────────────────────────────────────────────────────
-function TicketSection({ title, items, color, bgColor, showProject }) {
-  const [open, setOpen] = useState(true);
+function TicketSection({ title, items, color, bgColor, showProject, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [expanded, setExpanded] = useState(false);
   if (!items || items.length === 0) return null;
 
@@ -538,7 +538,7 @@ function ProjectCard({ project }) {
               <TicketSection title="In Progress" items={d.inProgress} color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" />
               <TicketSection title="On Hold"     items={d.onHold}     color="var(--status-blocked-text)" bgColor="var(--status-blocked-bg)" />
               <TicketSection title="Open"        items={d.open}       color="var(--muted2)" />
-              <TicketSection title="Resolved This Week" items={d.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" />
+              <TicketSection title="Resolved This Week" items={d.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" defaultOpen={false} />
             </>
           )}
         </div>
