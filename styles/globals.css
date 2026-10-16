@@ -57,6 +57,7 @@
   --ink:          #1a1a2e;   /* strong neutral, e.g. the active "All" pill */
   --ink-contrast: #ffffff;   /* text on --ink */
   --aging-bg:     #fff3e0;
+  --review-bg:    #efe9fe;
   --shadow:       rgba(0,0,0,0.12);
   --badge-lift:   0%;
   color-scheme: light;
@@ -93,6 +94,7 @@ html[data-theme="dark"] {
   --ink:          #ecebf2;
   --ink-contrast: #14141f;
   --aging-bg:     #3a2714;
+  --review-bg:    #2a2045;
   --shadow:       rgba(0,0,0,0.5);
   --badge-lift:   45%;
 }

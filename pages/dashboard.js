@@ -95,11 +95,19 @@ const AGING_STYLES = {
 };
 
 // ── Ticket filter config (ticket-centric, not project-centric) ───────────────
+// "For Review" is a Userback workflow name, not one of our status groups, so it
+// works like Aging: a cross-cutting filter over every active ticket.
+// Userback workflow names that all mean "waiting on a review"
+const REVIEW_STATUSES = ['for review', 'under review', 'please review'];
+const isForReview = t => REVIEW_STATUSES.includes((t.workflowName || '').trim().toLowerCase().replace(/\s+/g, ' '));
+const isAgingTicket = t => { const days = getDaysSince(t.updatedAt || t.createdAt); return days !== null && days >= 30; };
+
 const FILTER_CONFIG = {
   all:        { label: 'All',         color: 'var(--ink)',                 bg: 'var(--ink)',                  textActive: 'var(--ink-contrast)' },
   onhold:     { label: 'On Hold',     color: 'var(--status-blocked-dot)',  bg: 'var(--status-blocked-bg)',    textActive: 'var(--status-blocked-text)' },
   inprogress: { label: 'In Progress', color: 'var(--status-inflight-dot)', bg: 'var(--status-inflight-bg)',   textActive: 'var(--status-inflight-text)' },
   open:       { label: 'Open',        color: 'var(--muted)',               bg: 'var(--surface2)',             textActive: 'var(--text)' },
+  forreview:  { label: 'For Review',  color: '#8b5cf6',                    bg: 'var(--review-bg)',            textActive: '#8b5cf6' },
   aging:      { label: 'Aging 30+',   color: '#e07020',                    bg: 'var(--aging-bg)',            textActive: '#e07020' },
   resolved:   { label: 'Resolved',    color: 'var(--green)',               bg: 'var(--status-active-bg)',     textActive: 'var(--green)' },
 };
@@ -192,6 +200,7 @@ function FilterLegend() {
                     {key === 'onhold' && 'Tickets parked or waiting — something is preventing progress'}
                     {key === 'inprogress' && 'Actively being worked on'}
                     {key === 'open' && 'Logged but not yet started'}
+                    {key === 'forreview' && 'Waiting on a review: For Review, Under Review or Please Review'}
                     {key === 'aging' && 'Not updated in 30+ days — needs attention or should be closed'}
                     {key === 'resolved' && 'Closed within the last 7 days'}
                   </div>
@@ -816,10 +825,10 @@ export default function Dashboard() {
 
   const teamMembers = (data?.teamMembers || []).map(m => m.name);
 
-  // ── Compute ticket-level counts across all projects ──
-  function getAllTickets() {
-    const tickets = { onhold: [], inprogress: [], open: [], aging: [], resolved: [], all: [] };
-    for (const p of (data?.projects || [])) {
+  // ── Ticket-level counts, based on the current Project + Team selection ──
+  function getAllTickets(projects) {
+    const tickets = { onhold: [], inprogress: [], open: [], forreview: [], aging: [], resolved: [], all: [] };
+    for (const p of projects) {
       const d = p.data;
       if (!d) continue;
       const tag = item => ({ ...item, _projectName: p.name });
@@ -828,15 +837,10 @@ export default function Dashboard() {
       for (const t of (d.open || []))              { const tagged = tag(t); tickets.open.push(tagged); tickets.all.push(tagged); }
       for (const t of (d.resolvedThisWeek || []))  { const tagged = tag(t); tickets.resolved.push(tagged); }
     }
-    // Aging: any active ticket not updated in 30+ days
-    tickets.aging = tickets.all.filter(t => {
-      const days = getDaysSince(t.updatedAt || t.createdAt);
-      return days !== null && days >= 30;
-    });
+    tickets.forreview = tickets.all.filter(isForReview);
+    tickets.aging     = tickets.all.filter(isAgingTicket);
     return tickets;
   }
-
-  const allTickets = data ? getAllTickets() : null;
 
   // ── Assignee filtering (item-level) ──
   function filterByAssignee(project, filterValue) {
@@ -870,11 +874,11 @@ export default function Dashboard() {
     if (statusFilter === 'inprogress') { open = []; onHold = []; resolvedThisWeek = []; }
     if (statusFilter === 'open')       { inProgress = []; onHold = []; resolvedThisWeek = []; }
     if (statusFilter === 'resolved')   { open = []; inProgress = []; onHold = []; }
-    if (statusFilter === 'aging') {
-      const isAging = t => { const days = getDaysSince(t.updatedAt || t.createdAt); return days !== null && days >= 30; };
-      open = open.filter(isAging);
-      inProgress = inProgress.filter(isAging);
-      onHold = onHold.filter(isAging);
+    if (statusFilter === 'aging' || statusFilter === 'forreview') {
+      const match = statusFilter === 'aging' ? isAgingTicket : isForReview;
+      open = open.filter(match);
+      inProgress = inProgress.filter(match);
+      onHold = onHold.filter(match);
       resolvedThisWeek = [];
     }
 
@@ -886,10 +890,15 @@ export default function Dashboard() {
   // Project names for dropdown
   const projectNames = (data?.projects || []).map(p => p.name).sort();
 
-  const filteredProjects = (data?.projects || [])
+  // Project + Team narrow everything; the status buttons then narrow the list
+  const scopedProjects = (data?.projects || [])
     .filter(p => projectFilter === 'all' || p.name === projectFilter)
     .map(p => filterByAssignee(p, assigneeFilter))
-    .filter(Boolean)
+    .filter(Boolean);
+
+  const allTickets = data ? getAllTickets(scopedProjects) : null;
+
+  const filteredProjects = scopedProjects
     .map(p => filterByStatus(p, filter))
     .filter(Boolean);
 
