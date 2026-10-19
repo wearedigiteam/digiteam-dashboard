@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
+import EasterEgg from '../components/EasterEgg';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
@@ -428,7 +429,7 @@ function TicketRow({ item, showProject }) {
 }
 
 // ── Ticket section ───────────────────────────────────────────────────────────
-function TicketSection({ title, items, color, bgColor, showProject, defaultOpen = true }) {
+function TicketSection({ title, items, color, bgColor, showProject, defaultOpen = true, onExpand }) {
   const [open, setOpen] = useState(defaultOpen);
   const [expanded, setExpanded] = useState(false);
   if (!items || items.length === 0) return null;
@@ -439,7 +440,7 @@ function TicketSection({ title, items, color, bgColor, showProject, defaultOpen 
 
   return (
     <div style={{ marginBottom: '14px' }}>
-      <button onClick={() => { setOpen(o => !o); if (!open) setExpanded(false); }}
+      <button onClick={() => { if (!open) { setExpanded(false); onExpand?.(); } setOpen(o => !o); }}
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           width: '100%', background: 'none', border: 'none',
@@ -454,7 +455,7 @@ function TicketSection({ title, items, color, bgColor, showProject, defaultOpen 
         <div style={{ paddingTop: '4px' }}>
           {visibleItems.map((item, i) => <TicketRow key={item.id || i} item={item} showProject={showProject} />)}
           {hasMore && (
-            <button onClick={() => setExpanded(e => !e)} style={{
+            <button onClick={() => { if (!expanded) onExpand?.(); setExpanded(e => !e); }} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               width: '100%', background: 'none', border: 'none',
               padding: '8px 0 4px', cursor: 'pointer',
@@ -469,6 +470,9 @@ function TicketSection({ title, items, color, bgColor, showProject, defaultOpen 
 
 // ── Needs Attention panel ────────────────────────────────────────────────────
 function NeedsAttentionPanel({ projects }) {
+  const [egg, setEgg] = useState(false);
+  const showEgg = useCallback(() => setEgg(true), []);
+  const hideEgg = useCallback(() => setEgg(false), []);
   const allTickets = [];
   for (const p of projects) {
     const d = p.data;
@@ -498,8 +502,9 @@ function NeedsAttentionPanel({ projects }) {
         <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: '#e53935', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{aging.length}</span>
         <span style={{ fontSize: '14px', color: 'var(--muted)' }}>ticket{aging.length !== 1 ? 's' : ''} untouched for 30+ days</span>
       </div>
-      {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="var(--status-blocked-bg)" showProject />}
-      {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="var(--aging-bg)" showProject />}
+      {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="var(--status-blocked-bg)" showProject onExpand={showEgg} />}
+      {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="var(--aging-bg)" showProject onExpand={showEgg} />}
+      <EasterEgg open={egg} onClose={hideEgg} />
     </div>
   );
 }
