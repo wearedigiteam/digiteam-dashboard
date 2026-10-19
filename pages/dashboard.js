@@ -4,7 +4,7 @@ import Head from 'next/head';
 import { getTokenFromRequest, verifyToken } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
-import EasterEgg from '../components/EasterEgg';
+import EasterEgg, { EGG_GIFS } from '../components/EasterEgg';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
@@ -504,7 +504,7 @@ function NeedsAttentionPanel({ projects }) {
       </div>
       {critical.length > 0 && <TicketSection title="60+ days" items={critical} color="#e53935" bgColor="var(--status-blocked-bg)" showProject onExpand={showEgg} />}
       {warning.length > 0 && <TicketSection title="30–59 days" items={warning} color="#e07020" bgColor="var(--aging-bg)" showProject onExpand={showEgg} />}
-      <EasterEgg open={egg} onClose={hideEgg} />
+      <EasterEgg open={egg} onClose={hideEgg} src={EGG_GIFS.needsAttention} />
     </div>
   );
 }
@@ -907,6 +907,12 @@ export default function Dashboard() {
     .map(p => filterByStatus(p, filter))
     .filter(Boolean);
 
+  // Easter egg: show a GIF each time the filters narrow the list down to nothing
+  const noResults = Boolean(data) && !loading && filteredProjects.length === 0;
+  const [emptyEgg, setEmptyEgg] = useState(false);
+  const hideEmptyEgg = useCallback(() => setEmptyEgg(false), []);
+  useEffect(() => { if (noResults) setEmptyEgg(true); }, [noResults]);
+
   return (
     <>
       <Head>
@@ -935,6 +941,7 @@ export default function Dashboard() {
         </header>
 
         <main className="dt-main">
+          <EasterEgg open={emptyEgg} onClose={hideEmptyEgg} src={EGG_GIFS.noResults} />
           <div className="dt-page-title" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h1>Userback overview</h1>

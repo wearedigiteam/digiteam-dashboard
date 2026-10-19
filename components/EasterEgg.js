@@ -1,15 +1,19 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-// Easter egg shown when someone expands a "Needs attention" section.
-// Closes on click, Escape, or by itself after a few seconds.
-const GIF_URL = 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExenczbm51dTB6aXZtaXloeTAwZnRzMnpubzVibzZ1NDV5dDQxY3F5cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13bdZafj52a5qM/giphy.gif';
+// Easter-egg GIF overlays. Each closes on click, Escape, or by itself after a few seconds.
+export const EGG_GIFS = {
+  needsAttention: 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExenczbm51dTB6aXZtaXloeTAwZnRzMnpubzVibzZ1NDV5dDQxY3F5cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13bdZafj52a5qM/giphy.gif',
+  noResults:      'https://i.pinimg.com/originals/ed/32/31/ed32319213bb232b3e9fb85cf06739d9.gif',
+};
 const AUTO_CLOSE_MS = 4000;
 
-// Preload so the overlay doesn't open empty on the first click
-if (typeof window !== 'undefined') { const img = new Image(); img.src = GIF_URL; }
+// Preload so an overlay never opens empty
+if (typeof window !== 'undefined') {
+  Object.values(EGG_GIFS).forEach(src => { const img = new Image(); img.src = src; });
+}
 
-export default function EasterEgg({ open, onClose }) {
+export default function EasterEgg({ open, onClose, src = EGG_GIFS.needsAttention }) {
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(onClose, AUTO_CLOSE_MS);
@@ -27,7 +31,7 @@ export default function EasterEgg({ open, onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       cursor: 'pointer', padding: '16px',
     }}>
-      <img src={GIF_URL} alt="" style={{
+      <img src={src} alt="" style={{
         maxWidth: 'min(480px, 90vw)', maxHeight: '70vh',
         borderRadius: '12px', boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
       }} />
