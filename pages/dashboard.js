@@ -907,8 +907,9 @@ export default function Dashboard() {
     .map(p => filterByStatus(p, filter))
     .filter(Boolean);
 
-  // Easter egg: show a GIF each time the filters narrow the list down to nothing
-  const noResults = Boolean(data) && !loading && filteredProjects.length === 0;
+  // Easter egg: show a GIF when the Project/Team selection has no active tickets
+  // (On Hold, In Progress and Open all 0). Resolved tickets don't count.
+  const noResults = Boolean(data) && !loading && allTickets && allTickets.all.length === 0;
   const [emptyEgg, setEmptyEgg] = useState(false);
   const hideEmptyEgg = useCallback(() => setEmptyEgg(false), []);
   useEffect(() => { if (noResults) setEmptyEgg(true); }, [noResults]);
