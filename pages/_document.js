@@ -16,7 +16,10 @@ const themeScript = `
 export default function Document() {
   return (
     <Html lang="en-CA">
-      <Head />
+      <Head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </Head>
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <Main />
