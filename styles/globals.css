@@ -237,3 +237,16 @@ input, select, textarea {
 @media (prefers-reduced-motion: reduce) {
   html, body { transition: none; }
 }
+
+/* ═══ Team scoreboard confetti ═══ */
+.dt-confetti { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.dt-confetti span {
+  position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px;
+  animation-name: dt-confetti-fall; animation-timing-function: ease-in; animation-fill-mode: forwards;
+}
+@keyframes dt-confetti-fall {
+  to { transform: translateY(160px) rotate(540deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dt-confetti { display: none; }
+}

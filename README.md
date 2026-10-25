@@ -19,3 +19,13 @@ Automatically loads all non-archived Userback projects and team members.
 Slack app scopes: `chat:write`, `im:write`, `users:read`, `users:read.email`.
 
 Who gets the DM, and their Slack member IDs, are set on the Admin tab.
+
+### Team scoreboard
+
+- `USERBACK_WEBHOOK_SECRET` — long random string; goes on the end of the webhook URL
+- `SCORE_DEFAULT_GOAL` — optional, the weekly goal until there are past weeks to average (default `25`)
+
+Webhook URL for each Userback project (Settings → Integrations → Webhook, tick "Feedback status is changed"):
+`https://digiteam-dashboard.vercel.app/api/webhooks/userback?key=YOUR_SECRET`
+
+Scores are also checked against a stored snapshot on every dashboard load and once a day, so a missed webhook or a project without one is still counted. Each ticket scores once.

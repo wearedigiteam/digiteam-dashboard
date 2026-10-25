@@ -1,6 +1,7 @@
 import { getTokenFromRequest, verifyToken } from '../../lib/auth';
 import { fetchAllProjects, fetchProjectTasks, computeHealth, getTeamMembers } from '../../lib/userback';
 import { kv } from '@vercel/kv';
+import { reconcileFromProjects } from '../../lib/scoreboard';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -37,6 +38,10 @@ export default async function handler(req, res) {
     }
 
     results.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Scoreboard safety net: compare against the stored snapshot using data we already have
+    try { await reconcileFromProjects(results); }
+    catch (err) { console.error('Score reconcile failed:', err.message); }
     const teamMembers = getTeamMembers();
 
     return res.status(200).json({

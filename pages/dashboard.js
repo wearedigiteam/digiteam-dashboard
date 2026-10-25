@@ -5,6 +5,7 @@ import { getTokenFromRequest, verifyToken } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
 import EasterEgg, { EGG_GIFS } from '../components/EasterEgg';
+import TeamScoreboard from '../components/TeamScoreboard';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const token = getTokenFromRequest(req);
@@ -965,6 +966,8 @@ export default function Dashboard() {
           {error && (
             <div style={{ background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33', borderRadius: '10px', padding: '18px 22px', color: 'var(--red)', fontSize: '15px', marginBottom: '20px' }}>Error: {error}</div>
           )}
+
+          {data && <TeamScoreboard refreshKey={lastFetch?.getTime()} />}
 
           {data && allTickets && (
             <>
