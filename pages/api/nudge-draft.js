@@ -4,12 +4,37 @@ import { getUser } from '../../lib/auth';
 
 const BANNED = 'meticulous, meticulously, intricate, intricately, commendable, delve, delving, ingenious, invaluable, pivotal, potent, compellingly, methodically, excellently, aptly, innovatively';
 
-function fallbackDraft({ project, tickets, firstName }) {
-  const lines = tickets.map(t => `- ${t.title} (waiting ${t.days} days): ${t.url}`).join('\n');
+// The ticket list is always built here, never by the AI: models drop titles and
+// mistype long Userback links, and a broken link in a client email is worse than none.
+const waited = t => `waiting ${t.days} day${t.days === 1 ? '' : 's'}`;
+const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Two versions of the same email:
+//   html  → titles are the links (for pasting into Gmail/Outlook)
+//   plain → title then link (for email apps opened with mailto:, which can't hold links)
+function assemble({ opening, closing, tickets, firstName }) {
+  const plain = `Hi,\n\n${opening}\n\n${tickets.map(t => `- ${t.title} (${waited(t)}): ${t.url}`).join('\n')}\n\n${closing}\n\nThanks,\n${firstName}`;
+  const html = `<p>Hi,</p><p>${esc(opening)}</p><ul>${tickets.map(t => `<li><a href="${esc(t.url)}">${esc(t.title)}</a> (${waited(t)})</li>`).join('')}</ul><p>${esc(closing)}</p><p>Thanks,<br>${esc(firstName)}</p>`;
+  return { body: plain, html };
+}
+
+// Anything the AI writes is prose only. A piece that sneaks in a link is replaced with
+// the standard wording rather than patched, so no half-sentences reach the client.
+const hasLink = text => /https?:\/\/|www\./i.test(String(text || ''));
+const proseOr = (text, standard) => (!text || hasLink(text) ? standard : String(text).trim());
+
+function standardWording(project, tickets) {
+  const one = tickets.length === 1;
   return {
-    subject: `${project}: ${tickets.length} item${tickets.length === 1 ? '' : 's'} waiting on your review`,
-    body: `Hi,\n\nJust checking in on ${tickets.length === 1 ? 'an item' : 'a few items'} that ${tickets.length === 1 ? 'is' : 'are'} waiting on your review:\n\n${lines}\n\nWhen you get a chance, could you let us know if ${tickets.length === 1 ? 'it looks' : 'these look'} good, or if anything needs changing? If any of them are no longer needed, we can close them out.\n\nThanks,\n${firstName}`,
+    subject: `${project}: ${tickets.length} item${one ? '' : 's'} waiting on your review`,
+    opening: `Just checking in on ${one ? 'an item' : 'a few items'} that ${one ? 'is' : 'are'} waiting on your review:`,
+    closing: `When you get a chance, could you let us know if ${one ? 'it looks' : 'these look'} good, or if anything needs changing? If any of them are no longer needed, we can close them out.`,
   };
+}
+
+function fallbackDraft({ project, tickets, firstName }) {
+  const w = standardWording(project, tickets);
+  return { subject: w.subject, ...assemble({ opening: w.opening, closing: w.closing, tickets, firstName }) };
 }
 
 export default async function handler(req, res) {
@@ -36,18 +61,17 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(200).json({ ...fallback, ai: false });
 
-  const prompt = `Write a short follow-up email from ${firstName} at Digiteam (a web development agency) to their client contact at "${project}".
-These tickets have been waiting on the client's review:
-${clean.map(t => `- "${t.title}" (status: ${t.status}, waiting ${t.days} days) link: ${t.url}`).join('\n')}
+  const prompt = `You're helping ${firstName} at Digiteam (a web development agency) write a short follow-up email to their client contact at "${project}".
+${clean.length} ticket${clean.length === 1 ? ' has' : 's have'} been waiting on the client's review, the longest for ${Math.max(...clean.map(t => t.days))} days:
+${clean.map(t => `- ${t.title} (${t.status})`).join('\n')}
 
-Requirements:
-- Goal: get the client to review each item, approve it, ask for changes, or say it can be closed.
-- Friendly, professional but conversational, brief. No preamble, no filler, no guilt-tripping about delays.
-- List every ticket with its exact link on its own line. Do not change or shorten the links.
-- ${us ? 'Use US spelling.' : 'Use Canadian spelling.'}
-- Never use these words: ${BANNED}.
-- Start with "Hi," (the sender will add the name). Sign off with "${firstName}".
-Return only JSON: {"subject": "...", "body": "..."}`;
+The email's ticket list (titles and links) is inserted automatically between your opening and closing. Write only:
+- "subject": a short subject line mentioning ${project}.
+- "opening": 1–2 sentences leading into the list, ending with a colon.
+- "closing": 1–2 sentences after the list asking them to approve each item, request changes, or say it can be closed.
+
+Rules: friendly, professional but conversational, brief. No greeting and no sign-off (both are added). No links, no ticket titles, no list. No guilt-tripping about delays. ${us ? 'Use US spelling.' : 'Use Canadian spelling.'} Never use these words: ${BANNED}.
+Return only JSON: {"subject": "...", "opening": "...", "closing": "..."}`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -59,12 +83,11 @@ Return only JSON: {"subject": "...", "body": "..."}`;
     const data = await r.json();
     const text = (data.content || []).map(c => c.text || '').join('');
     const json = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-    let { subject, body } = json;
-    if (!subject || !body) throw new Error('Incomplete draft');
-    // Make sure every ticket link made it into the email
-    const missing = clean.filter(t => !body.includes(t.url));
-    if (missing.length) body += `\n\n${missing.map(t => `- ${t.title}: ${t.url}`).join('\n')}`;
-    return res.status(200).json({ subject, body, ai: true });
+    const w = standardWording(project, clean);
+    const subject = proseOr(json.subject, w.subject).slice(0, 150);
+    const opening = proseOr(json.opening, w.opening);
+    const closing = proseOr(json.closing, w.closing);
+    return res.status(200).json({ subject, ...assemble({ opening, closing, tickets: clean, firstName }), ai: true });
   } catch (err) {
     console.error('Nudge draft failed, using template:', err.message);
     return res.status(200).json({ ...fallback, ai: false });

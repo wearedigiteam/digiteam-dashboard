@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { getUser, isAdmin } from '../lib/auth';
 import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
 import NudgeDraft from '../components/NudgeDraft';
+import { tabTitle, shorten, useTabTitleOverride, useTabTitleTop } from '../components/tabTitle';
 import { signOut } from 'next-auth/react';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
@@ -249,8 +250,9 @@ function sortByUrgency(items) {
 
 // ── Solve panel (wrench button + AI solution + post to Userback) ─────────────
 // Split into two parts: SolveButton (inline) and SolveExpander (full-width below row)
-function useSolve(item) {
+function useSolve(item, projectName) {
   const [open, setOpen] = useState(false);
+  useTabTitleOverride(tabTitle(item._projectName || projectName, shorten(item.title)), open);
   const [loading, setLoading] = useState(false);
   const [solution, setSolution] = useState('');
   const [error, setError] = useState(null);
@@ -362,7 +364,7 @@ function SolveExpander({ solve }) {
 // ── Ticket row ───────────────────────────────────────────────────────────────
 const PREVIEW_COUNT = 3;
 
-function TicketRow({ item, showProject }) {
+function TicketRow({ item, showProject, projectName }) {
   const lastModified = item.updatedAt || item.createdAt;
   const dateLabel = formatDate(lastModified);
   const days = getDaysSince(lastModified);
@@ -370,7 +372,7 @@ function TicketRow({ item, showProject }) {
   const agingStyle = AGING_STYLES[aging];
   const rawAssignee = item.assignee || '';
   const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
-  const solve = useSolve(item);
+  const solve = useSolve(item, projectName);
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -432,7 +434,7 @@ function TicketRow({ item, showProject }) {
 }
 
 // ── Ticket section ───────────────────────────────────────────────────────────
-function TicketSection({ title, items, color, bgColor, showProject, defaultOpen = true, onExpand }) {
+function TicketSection({ title, items, color, bgColor, showProject, defaultOpen = true, onExpand, projectName }) {
   const [open, setOpen] = useState(defaultOpen);
   const [expanded, setExpanded] = useState(false);
   if (!items || items.length === 0) return null;
@@ -456,7 +458,7 @@ function TicketSection({ title, items, color, bgColor, showProject, defaultOpen 
       </button>
       {open && (
         <div style={{ paddingTop: '4px' }}>
-          {visibleItems.map((item, i) => <TicketRow key={item.id || i} item={item} showProject={showProject} />)}
+          {visibleItems.map((item, i) => <TicketRow key={item.id || i} item={item} showProject={showProject} projectName={projectName} />)}
           {hasMore && (
             <button onClick={() => { if (!expanded) onExpand?.(); setExpanded(e => !e); }} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
@@ -637,10 +639,10 @@ function ProjectCard({ project }) {
             <div style={{ fontSize: '15px', color: 'var(--muted)', fontStyle: 'italic' }}>No open tickets</div>
           ) : (
             <>
-              <TicketSection title="In Progress" items={d.inProgress} color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" />
-              <TicketSection title="On Hold"     items={d.onHold}     color="var(--status-blocked-text)" bgColor="var(--status-blocked-bg)" />
-              <TicketSection title="Open"        items={d.open}       color="var(--muted2)" />
-              <TicketSection title="Resolved This Week" items={d.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" defaultOpen={false} />
+              <TicketSection projectName={project.name} title="In Progress" items={d.inProgress} color="var(--status-inflight-text)" bgColor="var(--status-inflight-bg)" />
+              <TicketSection projectName={project.name} title="On Hold"     items={d.onHold}     color="var(--status-blocked-text)" bgColor="var(--status-blocked-bg)" />
+              <TicketSection projectName={project.name} title="Open"        items={d.open}       color="var(--muted2)" />
+              <TicketSection projectName={project.name} title="Resolved This Week" items={d.resolvedThisWeek} color="var(--green)" bgColor="var(--status-active-bg)" defaultOpen={false} />
             </>
           )}
         </div>
@@ -759,7 +761,7 @@ function TableRow({ item, index }) {
   const agingStyle = AGING_STYLES[aging];
   const rawAssignee = item.assignee || '';
   const assigneeLabel = /^\d+$/.test(rawAssignee) ? '' : rawAssignee;
-  const solve = useSolve(item);
+  const solve = useSolve(item); // table rows carry their own _projectName
 
   return (
     <>
@@ -1037,10 +1039,17 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const hideEmptyEgg = useCallback(() => setEmptyEgg(false), []);
   useEffect(() => { if (noResults) setEmptyEgg(true); }, [noResults]);
 
+  // Tab title for Timely: client first, then what's being looked at
+  const openWindowTitle = useTabTitleTop();
+  const pageTitle = openWindowTitle || tabTitle(
+    projectFilter !== 'all' ? projectFilter : 'All projects',
+    filter !== 'all' ? FILTER_CONFIG[filter]?.label : 'Userback issues',
+  );
+
   return (
     <>
       <Head>
-        <title>Digiteam Dashboard</title>
+        <title>{pageTitle}</title>
         <meta name="robots" content="noindex,nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>

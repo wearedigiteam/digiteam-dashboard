@@ -234,7 +234,7 @@ export default function Admin() {
   return (
     <>
       <Head>
-        <title>Admin — Digiteam Dashboard</title>
+        <title>Admin – Budgets and settings | Digiteam</title>
         <meta name="robots" content="noindex,nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>

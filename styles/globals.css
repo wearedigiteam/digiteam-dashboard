@@ -264,3 +264,10 @@ input, select, textarea {
   .dt-confetti { display: none; }
   .dt-reward-toast { animation: none; }
 }
+
+/* Follow-up email draft (formatted, editable) */
+.dt-email-draft p { margin: 0 0 12px; }
+.dt-email-draft ul { margin: 0 0 12px; padding-left: 22px; }
+.dt-email-draft li { margin: 4px 0; }
+.dt-email-draft a { color: var(--blue); text-decoration: underline; }
+.dt-email-draft:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
