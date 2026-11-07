@@ -1,11 +1,10 @@
-import { getTokenFromRequest, verifyToken } from '../../../lib/auth';
+import { getUser } from '../../../lib/auth';
 import { runWeeklySlack } from '../../../lib/weekly-slack';
 
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
-  const token = getTokenFromRequest(req);
-  if (!token || !verifyToken(token)) {
+  if (!(await getUser(req))) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

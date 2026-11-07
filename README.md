@@ -5,9 +5,13 @@ Automatically loads all non-archived Userback projects and team members.
 ## Environment variables
 
 - `USERBACK_API_KEY` — Userback REST API key
-- `DASHBOARD_PASSWORD` — login password
-- `JWT_SECRET` — secret for session tokens
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — OAuth client from the Digiteam Dashboard Google Cloud project (Internal app)
+- `NEXTAUTH_SECRET` — long random string that signs sign-in sessions
+- `ALLOWED_EMAIL_DOMAIN` — optional, defaults to `digiteam.ca`
 - `ANTHROPIC_API_KEY` — AI assistant and issue solver
+
+Sign-in is Google only, limited to verified @digiteam.ca Workspace accounts. Redirect URIs registered in Google:
+`https://dashboard.digiteam.ca/api/auth/callback/google` and `https://digiteam-dashboard.vercel.app/api/auth/callback/google`
 
 ### Monday Slack summary
 

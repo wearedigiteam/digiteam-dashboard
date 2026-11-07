@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { getTokenFromRequest, verifyToken } from '../lib/auth';
+import { getUser } from '../lib/auth';
+import { signOut } from 'next-auth/react';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
 import EasterEgg, { EGG_GIFS } from '../components/EasterEgg';
 import TeamScoreboard from '../components/TeamScoreboard';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
-  const token = getTokenFromRequest(req);
-  if (!token || !verifyToken(token)) {
+  if (!(await getUser(req))) {
     return { redirect: { destination: `/?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } };
   }
   return { props: {} };
@@ -800,8 +800,7 @@ export default function Dashboard() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   async function handleLogout() {
-    await fetch('/api/logout', { method: 'POST' });
-    router.push('/');
+    await signOut({ callbackUrl: '/' });
   }
 
   async function sendToAI(prompt) {

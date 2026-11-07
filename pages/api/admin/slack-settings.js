@@ -1,12 +1,11 @@
-import { getTokenFromRequest, verifyToken } from '../../../lib/auth';
+import { getUser } from '../../../lib/auth';
 import { kv } from '@vercel/kv';
 import { SLACK_SETTINGS_KEY } from '../../../lib/weekly-slack';
 
 const SLACK_ID = /^[UW][A-Z0-9]{6,}$/;
 
 export default async function handler(req, res) {
-  const token = getTokenFromRequest(req);
-  if (!token || !verifyToken(token)) {
+  if (!(await getUser(req))) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 

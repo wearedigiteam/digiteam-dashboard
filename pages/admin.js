@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { getTokenFromRequest, verifyToken } from '../lib/auth';
+import { getUser } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
-  const token = getTokenFromRequest(req);
-  if (!token || !verifyToken(token)) {
+  if (!(await getUser(req))) {
     return { redirect: { destination: `/?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } };
   }
   return { props: {} };
