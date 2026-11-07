@@ -53,7 +53,7 @@ export function fossilEra(createdAt, now = new Date()) {
   return `Discovered in ${era} (${when})`;
 }
 
-// ── Bruno's opinions (hidden replies in Ask AI) ──────────────────────────────
+// ── Bruno's opinions (hidden replies in the Ask Bruno box) ────────────────────────────────────────────────
 const JOKES = [
   'There are 10 kinds of people: those who understand binary and those who don’t.',
   'A QA engineer walks into a bar. Orders 1 beer. Orders 0 beers. Orders 99999 beers. Orders −1 beers. Orders a lizard. The first real customer asks where the washroom is, and the bar catches fire.',

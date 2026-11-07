@@ -21,7 +21,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing feedbackId or comment' });
   }
 
-  const prefixedComment = `[AI Suggestion]\n\n${comment}`;
+  // Labelled as AI so anyone reading the ticket, including clients, knows where it came from
+  const prefixedComment = `[Bruno AI suggestion]\n\n${comment}`;
 
   // Post as the signed-in person's Userback account; fall back to the default account
   // (DEFAULT_COMMENT_USER_ID, or Chris's) if their email isn't a Userback member.

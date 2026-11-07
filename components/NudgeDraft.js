@@ -124,7 +124,7 @@ export default function NudgeDraft({ project, tickets, onClose }) {
               aria-label="Email draft" role="textbox" aria-multiline="true"
               style={{ ...field, minHeight: '260px', maxHeight: '50vh', overflow: 'auto' }}
               dangerouslySetInnerHTML={{ __html: draft.html }} />
-            {!draft.ai && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '6px' }}>The AI draft wasn’t available, so this is the standard template.</div>}
+            {!draft.ai && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '6px' }}>Bruno’s draft wasn’t available, so this is the standard template.</div>}
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={copy} style={btn(true)}>{copied ? '✓ Copied' : 'Copy email'}</button>
               <button onClick={() => generate(spelling)} style={btn(false)}>Redraft</button>

@@ -311,7 +311,7 @@ function useSolve(item, projectName) {
 
 function SolveButton({ solve }) {
   return (
-    <button onClick={solve.handleSolve} title="Help me fix this issue" style={{
+    <button onClick={solve.handleSolve} title="Ask Bruno how to fix this" style={{
       background: solve.open ? 'var(--orange)' : 'var(--surface2)',
       border: `1px solid ${solve.open ? 'var(--orange)' : 'var(--border)'}`,
       borderRadius: '6px', padding: '5px 8px', cursor: 'pointer',
@@ -340,7 +340,7 @@ function SolveExpander({ solve }) {
       {solve.solution && !solve.loading && (
         <>
           <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            AI Suggestion {solve.posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
+            Bruno’s suggestion {solve.posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
           </div>
           <textarea
             value={solve.solution}
@@ -362,7 +362,7 @@ function SolveExpander({ solve }) {
                 padding: '8px 16px', fontSize: '13px', fontWeight: '600',
                 cursor: solve.posting ? 'not-allowed' : 'pointer',
               }}>{solve.posting ? 'Posting...' : 'Post to Userback'}</button>
-              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Will be posted as [AI Suggestion]</span>
+              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Will be posted as [Bruno AI suggestion]</span>
             </div>
           )}
         </>
@@ -1243,7 +1243,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                 )}
               </div>
 
-              {/* ── AI Assistant ── */}
+              {/* ── Bruno (AI assistant) ── */}
               <div style={{ marginBottom: '20px' }}>
                 {!aiOpen ? (
                   <button onClick={() => setAiOpen(true)} style={{
@@ -1254,7 +1254,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                     width: '100%',
                   }}>
                     <span style={{ fontSize: '18px' }}>✦</span>
-                    Ask AI about your tickets...
+                    Ask Bruno about your tickets...
                   </button>
                 ) : (
                   <div style={{
@@ -1267,7 +1267,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                       padding: '12px 16px', borderBottom: '1px solid var(--border)',
                     }}>
                       <span style={{ fontSize: '18px' }}>✦</span>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', flex: 1 }}>AI Assistant</span>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', flex: 1 }}>Bruno</span>
                       <button onClick={() => setAiOpen(false)} style={{
                         background: 'none', border: 'none', color: 'var(--muted)',
                         fontSize: '16px', cursor: 'pointer', padding: '0 4px',
@@ -1335,7 +1335,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                       <input
                         value={aiQuestion}
                         onChange={e => setAiQuestion(e.target.value)}
-                        placeholder="Ask about your tickets..."
+                        placeholder="Ask Bruno about your tickets..."
                         style={{
                           flex: 1, background: 'var(--surface2)',
                           border: '1px solid var(--border2)', borderRadius: '8px',
