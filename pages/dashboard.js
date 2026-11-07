@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getUser, isAdmin } from '../lib/auth';
-import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS } from '../lib/statuses';
+import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
+import NudgeDraft from '../components/NudgeDraft';
 import { signOut } from 'next-auth/react';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
@@ -511,15 +512,21 @@ function NeedsAttentionPanel({ projects }) {
 // ── Waiting on client ────────────────────────────────────────────────────────
 // Tickets sitting in review for a while: not the team's to fix, but worth a nudge.
 function WaitingOnClientPanel({ projects }) {
-  const waiting = [];
+  const [drafting, setDrafting] = useState(null); // { project, tickets }
+  const closeDraft = useCallback(() => setDrafting(null), []);
+
+  const byClient = [];
   for (const p of projects) {
     const d = p.data;
     if (!d) continue;
+    const tickets = [];
     for (const list of [d.open, d.inProgress, d.onHold]) {
-      for (const t of list || []) if (isWaitingOnClient(t)) waiting.push({ ...t, _projectName: p.name });
+      for (const t of list || []) if (isWaitingOnClient(t)) tickets.push({ ...t, _projectName: p.name, _days: getDaysSince(t.updatedAt || t.createdAt) });
     }
+    if (tickets.length) byClient.push({ project: p.name, tickets: tickets.sort((a, b) => b._days - a._days) });
   }
-  if (waiting.length === 0) return null;
+  if (byClient.length === 0) return null;
+  const all = byClient.flatMap(c => c.tickets);
 
   return (
     <div style={{
@@ -529,10 +536,59 @@ function WaitingOnClientPanel({ projects }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Waiting on client</span>
-        <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: '#8b5cf6', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{waiting.length}</span>
+        <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: '#8b5cf6', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{all.length}</span>
         <span style={{ fontSize: '14px', color: 'var(--muted)' }}>in review for {WAITING_DAYS}+ days, worth a nudge</span>
       </div>
-      <TicketSection title="Oldest first" items={waiting} color="#8b5cf6" bgColor="var(--review-bg)" showProject defaultOpen={false} />
+
+      <ul style={{ listStyle: 'none', marginBottom: '12px' }}>
+        {byClient.map(c => (
+          <li key={c.project} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', minWidth: '140px' }}>{c.project}</span>
+            <span style={{ fontSize: '14px', color: 'var(--muted)', flex: 1 }}>
+              {c.tickets.length} ticket{c.tickets.length === 1 ? '' : 's'}, oldest waiting {c.tickets[0]._days} days
+            </span>
+            <button onClick={() => setDrafting(c)} style={{
+              background: 'var(--surface2)', border: '1px solid var(--border2)', color: 'var(--text)',
+              borderRadius: '6px', fontSize: '13px', fontWeight: '500', padding: '6px 12px',
+            }}>✉ Draft follow-up</button>
+          </li>
+        ))}
+      </ul>
+
+      <TicketSection title="All waiting tickets" items={all} color="#8b5cf6" bgColor="var(--review-bg)" showProject defaultOpen={false} />
+      {drafting && <NudgeDraft project={drafting.project} tickets={drafting.tickets} onClose={closeDraft} />}
+    </div>
+  );
+}
+
+// ── Unassigned ───────────────────────────────────────────────────────────────
+// Ignores the Team filter on purpose: tickets with no owner never show up in anyone's own queue.
+function UnassignedPanel({ projects }) {
+  const items = [];
+  for (const p of projects) {
+    const d = p.data;
+    if (!d) continue;
+    for (const list of [d.open, d.inProgress, d.onHold]) {
+      for (const t of list || []) if (isStaleUnassigned(t)) items.push({ ...t, _projectName: p.name });
+    }
+  }
+  if (items.length === 0) return null;
+  const oldest = Math.max(...items.map(t => daysSinceCreated(t) || 0));
+
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderLeft: '4px solid var(--status-inflight-dot)', borderRadius: '10px',
+      padding: '20px', marginBottom: '20px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Unassigned</span>
+        <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: 'var(--status-inflight-dot)', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{items.length}</span>
+        <span style={{ fontSize: '14px', color: 'var(--muted)' }}>
+          no owner for {UNASSIGNED_DAYS}+ days{oldest > UNASSIGNED_DAYS ? `, oldest ${oldest} days` : ''}. Assign in Userback
+        </span>
+      </div>
+      <TicketSection title="Needs an owner" items={items} color="var(--status-inflight-dot)" bgColor="var(--status-inflight-bg)" showProject />
     </div>
   );
 }
@@ -1237,6 +1293,9 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                 <TicketTable projects={filteredProjects} />
               ) : (
                 <>
+                  {filter === 'all' && assigneeFilter !== 'unassigned' && (
+                    <UnassignedPanel projects={(data?.projects || []).filter(p => projectFilter === 'all' || p.name === projectFilter)} />
+                  )}
                   {filter === 'all' && <NeedsAttentionPanel projects={filteredProjects} />}
                   {(filter === 'all' || filter === 'forreview') && <WaitingOnClientPanel projects={filteredProjects} />}
 
