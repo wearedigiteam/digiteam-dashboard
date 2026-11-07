@@ -620,11 +620,18 @@ function ProjectCard({ project, onReport }) {
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderRadius: '10px', marginBottom: '14px', overflow: 'hidden',
     }}>
-      <button className="dt-card-header" onClick={() => setExpanded(e => !e)}
+      <div className="dt-card-header" role="button" tabIndex={0} aria-expanded={expanded}
+        onClick={() => setExpanded(e => !e)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(x => !x); } }}
         style={{ borderBottom: expanded ? '1px solid var(--border)' : 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, textAlign: 'left', flexWrap: 'wrap', minWidth: 0 }}>
           <UserbackIcon size={16} />
           <span style={{ fontSize: '17px', fontWeight: '600', color: 'var(--text)' }}>{project.name}</span>
+          {onReport && d && !d.error && (
+            <button className="dt-report-link" title="Monthly report"
+              onClick={e => { e.stopPropagation(); onReport({ name: project.name, userbackId: project.userbackId }); }}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}><span aria-hidden="true">📄</span><span className="dt-report-text">Monthly report</span></button>
+          )}
         </div>
         <div className="dt-card-meta">
           <GasGauge budget={project.budget} />
@@ -643,14 +650,9 @@ function ProjectCard({ project, onReport }) {
             {expanded ? '▲' : '▼'}
           </span>
         </div>
-      </button>
+      </div>
       {expanded && d && (
         <div style={{ padding: '12px 16px' }}>
-          {onReport && !d.error && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
-              <button className="dt-report-link" onClick={() => onReport({ name: project.name, userbackId: project.userbackId })}>📄 Monthly report</button>
-            </div>
-          )}
           {d.error ? (
             <div style={{ fontSize: '14px', color: 'var(--red)', fontFamily: 'var(--mono)' }}>Error: {d.error}</div>
           ) : (d.total === 0 && (!d.resolvedThisWeek || d.resolvedThisWeek.length === 0)) ? (

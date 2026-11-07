@@ -499,8 +499,11 @@ html[data-arcade="on"] body::after {
   font-size: 13px; font-weight: 500; padding: 5px 10px; white-space: nowrap;
 }
 .dt-report-btn:hover { border-color: var(--orange); }
-.dt-report-link { background: none; border: none; color: var(--orange); font-size: 13px; font-weight: 500; padding: 2px 0; }
-.dt-report-link:hover { text-decoration: underline; }
+.dt-report-link { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--orange); font-size: 13px; font-weight: 500; padding: 2px 0; line-height: 1.2; text-decoration: none; cursor: pointer; }
+.dt-report-link:hover .dt-report-text { text-decoration: underline; text-underline-offset: 3px; }
+.dt-card-header .dt-report-link { margin-left: 6px; padding: 2px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.dt-card-header .dt-report-link:hover { background: var(--surface2); }
+.dt-card-header:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
 
 /* On wider screens the filter row wraps instead of hiding controls off the right edge */
 @media (min-width: 769px) {
