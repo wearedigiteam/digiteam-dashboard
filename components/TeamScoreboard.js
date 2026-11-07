@@ -1,17 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useArcade, getSeason } from './eggs';
 
 // Team-first scoreboard: one shared weekly goal, team highlights and recent wins.
 // No individual standings anywhere on purpose.
 const COLORS = ['#f05a27', '#f7ad39', '#2d8a4e', '#378add', '#8b5cf6'];
+const CANADA_DAY = ['#d52b1e', '#ffffff', '#d52b1e'];
 
 function Confetti() {
+  const palette = getSeason() === 'canada-day' ? CANADA_DAY : COLORS; // red and white on July 1
   const pieces = useMemo(() => Array.from({ length: 36 }, (_, i) => ({
     left: Math.random() * 100,
     delay: Math.random() * 0.4,
     dur: 1.6 + Math.random() * 1.2,
     rot: Math.random() * 360,
-    color: COLORS[i % COLORS.length],
-  })), []);
+    color: palette[i % palette.length],
+  })), [palette]);
   return (
     <div aria-hidden="true" className="dt-confetti">
       {pieces.map((p, i) => (
@@ -37,6 +40,7 @@ export default function TeamScoreboard({ refreshKey }) {
   const [score, setScore] = useState(null);
   const [showWins, setShowWins] = useState(false);
   const [celebrate, setCelebrate] = useState(null); // list of reward messages while playing
+  const arcade = useArcade();
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +69,13 @@ export default function TeamScoreboard({ refreshKey }) {
       borderRadius: '10px', padding: '16px 20px', marginBottom: '20px',
     }}>
       {celebrate && <Confetti />}
+      {arcade && (
+        <div className="dt-arcade-banner" aria-hidden="true">
+          <span>HIGH SCORE</span>
+          <span>TEAM&nbsp;&nbsp;{String(score.points).padStart(3, '0')}&nbsp;PTS</span>
+          <span className="dt-blink">INSERT COIN</span>
+        </div>
+      )}
       {celebrate && (
         <div role="status" className="dt-reward-toast">
           {celebrate.join(' and ')} 🎉
@@ -131,7 +142,8 @@ export default function TeamScoreboard({ refreshKey }) {
                 ? <a href={e.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</a>
                 : <span style={{ color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>}
               {e.type === 'clawback' && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>back from review</span>}
-              {e.aging && e.type !== 'clawback' && <span style={{ fontSize: '12px', color: '#e07020' }}>30+ days</span>}
+              {e.fossil && e.type !== 'clawback' && <span style={{ fontSize: '12px' }} title="Ticket over a year old">🦴 fossil</span>}
+              {e.aging && !e.fossil && e.type !== 'clawback' && <span style={{ fontSize: '12px', color: '#e07020' }}>30+ days</span>}
               {e.project && <span style={{ fontSize: '12px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{e.project}</span>}
               <span style={{ fontSize: '12px', color: 'var(--muted2)', whiteSpace: 'nowrap', fontFamily: 'var(--mono)' }}>{timeAgo(e.at)}</span>
             </li>

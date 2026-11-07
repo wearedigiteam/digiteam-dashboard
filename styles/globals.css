@@ -271,3 +271,120 @@ input, select, textarea {
 .dt-email-draft li { margin: 4px 0; }
 .dt-email-draft a { color: var(--blue); text-decoration: underline; }
 .dt-email-draft:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+
+/* ═══ Easter eggs ═══ */
+
+/* Logo fidget: seven quick clicks and the D flies apart, then snaps back */
+.dt-logo { display: inline-flex; cursor: default; user-select: none; }
+.dt-logo-burst svg { overflow: visible; }
+.dt-logo-burst svg > * { animation: dt-burst 1.2s cubic-bezier(.3,1.4,.5,1); transform-box: fill-box; transform-origin: center; }
+.dt-logo-burst svg > :nth-child(1) { --bx: -26px; --by: -14px; --br: -140deg; }
+.dt-logo-burst svg > :nth-child(2) { --bx: 18px;  --by: -22px; --br: 90deg; }
+.dt-logo-burst svg > :nth-child(3) { --bx: 30px;  --by: 16px;  --br: 200deg; }
+.dt-logo-burst svg > :nth-child(4) { --bx: 8px;   --by: -30px; --br: -80deg; }
+.dt-logo-burst svg > :nth-child(5) { --bx: -20px; --by: 26px;  --br: 160deg; }
+@keyframes dt-burst {
+  0% { transform: none; }
+  40% { transform: translate(var(--bx), var(--by)) rotate(var(--br)); }
+  100% { transform: none; }
+}
+
+/* Seasonal touches in the header */
+.dt-snow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.dt-snow span { position: absolute; top: -14px; color: rgba(255,255,255,0.75); font-size: 10px; animation: dt-snowfall linear infinite; }
+@keyframes dt-snowfall { to { transform: translateY(80px) translateX(14px); } }
+.dt-season-badge { position: absolute; left: 18px; top: -8px; font-size: 14px; pointer-events: none; }
+.dt-tree { background: none; border: none; font-size: 18px; line-height: 1; padding: 2px 4px; cursor: pointer; filter: saturate(1.1); }
+.dt-tree:hover { transform: scale(1.15); }
+
+/* Fossils */
+.dt-fossil { margin-right: 6px; font-size: 14px; cursor: help; }
+
+/* Overlays */
+.dt-egg-backdrop {
+  position: fixed; inset: 0; z-index: 3000; background: rgba(10,10,20,0.6);
+  display: flex; align-items: center; justify-content: center; padding: 16px; cursor: pointer;
+}
+.dt-egg-card {
+  position: relative; z-index: 1; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 14px; padding: 28px 32px; text-align: center;
+  display: flex; flex-direction: column; gap: 8px; max-width: 420px; box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+.dt-egg-card strong { font-size: 20px; }
+.dt-egg-card span { color: var(--muted); font-size: 15px; }
+.dt-egg-big { font-size: 64px; line-height: 1; }
+.dt-trophy { animation: dt-trophy 0.8s cubic-bezier(.3,1.6,.5,1); }
+@keyframes dt-trophy { from { transform: scale(0.2) rotate(-20deg); } to { transform: none; } }
+.dt-shower { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.dt-shower span { position: absolute; top: -20px; width: 8px; height: 12px; border-radius: 2px; animation: dt-fall ease-in forwards; }
+.dt-shower span.dt-leaf { width: auto; height: auto; font-size: 22px; }
+@keyframes dt-fall { to { transform: translateY(110vh) rotate(540deg); opacity: 0.2; } }
+
+/* "...if we're still doing this by Christmas..." */
+.dt-xmas {
+  position: relative; z-index: 1; cursor: default; margin: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: min(520px, 92vw);
+}
+.dt-xmas-art { position: relative; }
+.dt-xmas-art img { display: block; max-height: 66vh; max-width: 100%; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.6); }
+.dt-stamp {
+  position: absolute; left: 50%; top: 76%; transform: translate(-50%, -50%) rotate(-14deg);
+  border: 6px solid #d0021b; border-radius: 10px; padding: 8px 18px; text-align: center;
+  color: #d0021b; background: rgba(255,255,255,0.82); font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; line-height: 1.1; box-shadow: 0 0 0 2px rgba(208,2,27,0.25) inset;
+  animation: dt-stamp 0.45s cubic-bezier(.2,1.6,.4,1) 0.6s both;
+}
+.dt-stamp span { display: block; font-size: clamp(22px, 5vw, 34px); }
+.dt-stamp small { display: block; font-size: 15px; letter-spacing: 3px; margin-top: 2px; }
+@keyframes dt-stamp {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(3); }
+  to   { opacity: 1; transform: translate(-50%, -50%) rotate(-14deg) scale(1); }
+}
+.dt-xmas figcaption {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; text-align: center; display: flex; flex-direction: column; gap: 4px; align-items: center;
+}
+.dt-xmas figcaption strong { font-size: 17px; }
+.dt-xmas figcaption span { color: var(--muted); font-size: 14px; }
+.dt-xmas figcaption button {
+  margin-top: 6px; background: var(--orange); color: #fff; border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; padding: 8px 16px;
+}
+
+/* Toasts */
+.dt-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 3100;
+  background: var(--ink); color: var(--ink-contrast); font-size: 15px; font-weight: 600;
+  padding: 10px 18px; border-radius: 999px; box-shadow: 0 8px 24px var(--shadow);
+  animation: dt-toast-in 0.25s ease;
+}
+@keyframes dt-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+/* Arcade mode (Konami code) */
+html[data-arcade="on"] h1, html[data-arcade="on"] h2,
+html[data-arcade="on"] .dt-header-brand-text, html[data-arcade="on"] .dt-status-num,
+html[data-arcade="on"] .dt-status-label, html[data-arcade="on"] .dt-arcade-banner,
+html[data-arcade="on"] .dt-toast {
+  font-family: 'Press Start 2P', var(--mono) !important; letter-spacing: 0;
+}
+html[data-arcade="on"] h1 { font-size: 18px !important; }
+html[data-arcade="on"] .dt-status-label { font-size: 8px !important; }
+html[data-arcade="on"] body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 2900;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.12) 0 1px, transparent 1px 3px);
+  animation: dt-flicker 4s infinite;
+}
+@keyframes dt-flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+.dt-arcade-banner {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+  font-size: 12px; color: #f7ad39; background: #0d0d16; padding: 10px 12px; border-radius: 6px;
+}
+.dt-blink { animation: dt-blink 1s steps(1) infinite; color: #f05a27; }
+@keyframes dt-blink { 50% { visibility: hidden; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-snow span, .dt-shower, .dt-blink { animation: none; }
+  .dt-shower { display: none; }
+  .dt-logo-burst svg > *, .dt-trophy, .dt-stamp, .dt-toast { animation: none; }
+  html[data-arcade="on"] body::after { animation: none; }
+}

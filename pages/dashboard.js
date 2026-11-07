@@ -5,6 +5,8 @@ import { getUser, isAdmin } from '../lib/auth';
 import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
 import NudgeDraft from '../components/NudgeDraft';
 import { tabTitle, shorten, useTabTitleOverride, useTabTitleTop } from '../components/tabTitle';
+import { getSeason, isSnowing, fossilEra, brunoReply, showToast, useKonami, claimEgg, isFridayAfternoon } from '../components/eggs';
+import { ChristmasOverlay, BirthdayOverlay, TrophyOverlay, ToastHost } from '../components/EggOverlays';
 import { signOut } from 'next-auth/react';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
@@ -118,6 +120,13 @@ const FILTER_CONFIG = {
 };
 
 // ── Reusable components ──────────────────────────────────────────────────────
+// 🦖 on tickets more than a year old
+function FossilBadge({ item }) {
+  const era = fossilEra(item.createdAt);
+  if (!era) return null;
+  return <span className="dt-fossil" title={era} aria-label={era}>🦖</span>;
+}
+
 // Userback supplies its own badge colours, tuned for light backgrounds.
 // In dark mode, --badge-lift mixes in white so dark purples/blues stay readable.
 function liftColor(color) {
@@ -292,6 +301,7 @@ function useSolve(item, projectName) {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setPosted(true);
+      if (isFridayAfternoon()) showToast('Deploying on a Friday, are we? 🙃');
     } catch (err) { setError(err.message); }
     finally { setPosting(false); }
   }
@@ -391,13 +401,13 @@ function TicketRow({ item, showProject, projectName }) {
               fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               textDecoration: 'none', display: 'block',
-            }} title={item.title}>{item.title}</a>
+            }} title={item.title}><FossilBadge item={item} />{item.title}</a>
           ) : (
             <span style={{
               fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               display: 'block',
-            }} title={item.title}>{item.title}</span>
+            }} title={item.title}><FossilBadge item={item} />{item.title}</span>
           )}
           {item.description && (
             <div style={{
@@ -783,12 +793,12 @@ function TableRow({ item, index }) {
             <a href={item.url} target="_blank" rel="noreferrer" style={{
               color: 'var(--text)', textDecoration: 'none', fontSize: '15px', fontWeight: '500',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
-            }} title={item.title}>{item.title}</a>
+            }} title={item.title}><FossilBadge item={item} />{item.title}</a>
           ) : (
             <span style={{
               fontSize: '15px', fontWeight: '500',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
-            }} title={item.title}>{item.title}</span>
+            }} title={item.title}><FossilBadge item={item} />{item.title}</span>
           )}
           {item.description && (
             <div style={{
@@ -919,6 +929,8 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   }
 
   async function sendToAI(prompt) {
+    const canned = brunoReply(prompt);
+    if (canned) { setAiError(null); setAiReply(canned); return; }
     setAiLoading(true); setAiError(null); setAiReply('');
     try {
       const res = await fetch('/api/ask', {
@@ -1037,7 +1049,41 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const noResults = Boolean(data) && !loading && allTickets && allTickets.all.length === 0;
   const [emptyEgg, setEmptyEgg] = useState(false);
   const hideEmptyEgg = useCallback(() => setEmptyEgg(false), []);
-  useEffect(() => { if (noResults) setEmptyEgg(true); }, [noResults]);
+  const [trophy, setTrophy] = useState(false);
+  const hideTrophy = useCallback(() => setTrophy(false), []);
+  const myName = (data?.teamMembers || []).find(m => (m.email || '').toLowerCase() === (userEmail || '').toLowerCase())?.name;
+  const ownQueue = Boolean(myName) && assigneeFilter === myName && projectFilter === 'all';
+  useEffect(() => {
+    if (!noResults) return;
+    if (!ownQueue) { setEmptyEgg(true); return; }
+    claimEgg('queue-clear').then(first => (first ? setTrophy(true) : setEmptyEgg(true)));
+  }, [noResults]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Easter eggs: Konami code, seasons, logo fidget ──
+  useKonami();
+  const [season, setSeason] = useState(null); // set after load so the server render matches
+  const [snowing, setSnowing] = useState(false);
+  const [xmas, setXmas] = useState(null);       // 'countdown' | 'verdict'
+  const [birthday, setBirthday] = useState(false);
+  const closeXmas = useCallback(() => setXmas(null), []);
+  const closeBirthday = useCallback(() => setBirthday(false), []);
+  useEffect(() => {
+    const s = getSeason();
+    setSeason(s); setSnowing(isSnowing());
+    if (s === 'christmas') claimEgg('christmas').then(first => first && setXmas('verdict'));
+    if (s === 'canada-day') claimEgg('birthday').then(first => first && setBirthday(true));
+  }, []);
+  const logoClicks = useRef([]);
+  const [logoBurst, setLogoBurst] = useState(false);
+  function onLogoClick() {
+    const now = Date.now();
+    logoClicks.current = [...logoClicks.current.filter(t => now - t < 3000), now];
+    if (logoClicks.current.length >= 7) {
+      logoClicks.current = [];
+      setLogoBurst(true);
+      setTimeout(() => setLogoBurst(false), 1300);
+    }
+  }
 
   // Tab title for Timely: client first, then what's being looked at
   const openWindowTitle = useTabTitleTop();
@@ -1056,9 +1102,17 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
 
       <div style={{ minHeight: '100vh' }}>
         <header className="dt-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-            <DigiteamLogo size={28} />
+          {snowing && <div className="dt-snow" aria-hidden="true">{Array.from({ length: 28 }, (_, i) => <span key={i} style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 7) * 0.9}s`, animationDuration: `${6 + (i % 5)}s` }}>❄</span>)}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, position: 'relative' }}>
+            <span onClick={onLogoClick} className={logoBurst ? 'dt-logo dt-logo-burst' : 'dt-logo'}>
+              <DigiteamLogo size={28} />
+            </span>
+            {season === 'halloween' && <span className="dt-season-badge" aria-hidden="true">🎃</span>}
+            {season === 'canada-day' && <span className="dt-season-badge" aria-hidden="true">🍁</span>}
             <span className="dt-header-brand-text">digiteam</span>
+            {season === 'advent' && (
+              <button onClick={() => setXmas('countdown')} className="dt-tree" title="…if we’re still doing this by Christmas…" aria-label="Christmas countdown">🎄</button>
+            )}
           </div>
           <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
             <button onClick={() => router.push('/dashboard')} style={{ background: 'rgba(247,173,57,0.15)', color: '#f7ad39', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Dashboard</button>
@@ -1075,6 +1129,10 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
 
         <main className="dt-main">
           <EasterEgg open={emptyEgg} onClose={hideEmptyEgg} src={EGG_GIFS.noResults} />
+          {trophy && <TrophyOverlay onClose={hideTrophy} />}
+          {xmas && <ChristmasOverlay mode={xmas} onClose={closeXmas} />}
+          {birthday && <BirthdayOverlay onClose={closeBirthday} />}
+          <ToastHost />
           <div className="dt-page-title" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h1>Userback overview</h1>
