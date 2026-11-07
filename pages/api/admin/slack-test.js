@@ -1,12 +1,12 @@
-import { getUser } from '../../../lib/auth';
+import { getUser, isAdmin } from '../../../lib/auth';
 import { runWeeklySlack } from '../../../lib/weekly-slack';
 
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
-  if (!(await getUser(req))) {
-    return res.status(401).json({ error: 'Unauthorised' });
-  }
+  const user = await getUser(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorised' });
+  if (!isAdmin(user)) return res.status(403).json({ error: 'Admin access only' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { userId, slackId } = req.body || {};

@@ -8,6 +8,9 @@ Automatically loads all non-archived Userback projects and team members.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — OAuth client from the Digiteam Dashboard Google Cloud project (Internal app)
 - `NEXTAUTH_SECRET` — long random string that signs sign-in sessions
 - `ALLOWED_EMAIL_DOMAIN` — optional, defaults to `digiteam.ca`
+- `ADMIN_EMAILS` — optional, comma-separated emails allowed on the Admin tab (unset = everyone signed in)
+- `DEFAULT_COMMENT_USER_ID` — optional, Userback userId for AI comments when the signer isn't a Userback member (default Chris's)
+- `SLACK_ALERTS_CHANNEL` — Slack channel ID for Userback API outage alerts (invite the app to it)
 - `ANTHROPIC_API_KEY` — AI assistant and issue solver
 
 Sign-in is Google only, limited to verified @digiteam.ca Workspace accounts. Redirect URIs registered in Google:
@@ -33,3 +36,7 @@ Webhook URL for each Userback project (Settings → Integrations → Webhook, ti
 `https://digiteam-dashboard.vercel.app/api/webhooks/userback?key=YOUR_SECRET`
 
 Scores are also checked against a stored snapshot on every dashboard load and once a day, so a missed webhook or a project without one is still counted. Each ticket scores once.
+
+### Speed
+
+The dashboard serves a cached copy of the Userback data (in KV) so it opens instantly, then refreshes in the background if the copy is over a minute old. Refresh always fetches fresh data, and the daily cron keeps the cache warm.

@@ -1,24 +1,21 @@
 // Daily cron (see vercel.json). Runs at 12:00 and 13:00 UTC so one run always lands at
 // SLACK_SEND_HOUR Toronto time in both EDT and EST.
 //   Monday, at the send hour → Monday Slack summary (once per day, KV flag)
-//   Every other run          → scoreboard safety-net check against the snapshot
+//   Every other run          → Userback health check, then refresh the cached dashboard data
+//                              (which also runs the scoreboard safety-net check)
 // Use the "Send test" buttons on the Admin tab to try the Slack DM on one person.
 
 import { kv } from '@vercel/kv';
 import { runWeeklySlack } from '../../../lib/weekly-slack';
-import { fetchAllProjects, fetchProjectTasks } from '../../../lib/userback';
-import { reconcileFromProjects } from '../../../lib/scoreboard';
+import { refreshDashboardData } from '../../../lib/dashboard-data';
+import { checkUserbackHealth } from '../../../lib/health';
 
-const delay = ms => new Promise(r => setTimeout(r, ms));
-
+// Health check first; if Userback is fine, refresh the cached data (which also runs the score check)
 async function runScoreCheck() {
-  const projects = await fetchAllProjects();
-  const results = [];
-  for (const p of projects) {
-    results.push({ name: p.name, data: await fetchProjectTasks(p.id) });
-    await delay(200);
-  }
-  return reconcileFromProjects(results);
+  const health = await checkUserbackHealth();
+  if (!health.ok) return { health };
+  const data = await refreshDashboardData();
+  return { health, projects: data.projects.length };
 }
 
 export const config = { maxDuration: 60 };

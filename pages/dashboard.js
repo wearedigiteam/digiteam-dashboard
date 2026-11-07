@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { getUser } from '../lib/auth';
+import { getUser, isAdmin } from '../lib/auth';
+import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS } from '../lib/statuses';
 import { signOut } from 'next-auth/react';
 import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
@@ -9,10 +10,11 @@ import EasterEgg, { EGG_GIFS } from '../components/EasterEgg';
 import TeamScoreboard from '../components/TeamScoreboard';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
-  if (!(await getUser(req))) {
+  const user = await getUser(req);
+  if (!user) {
     return { redirect: { destination: `/?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } };
   }
-  return { props: {} };
+  return { props: { userEmail: user.email, canAdmin: isAdmin(user) } };
 }
 
 // ── Logos ─────────────────────────────────────────────────────────────────────
@@ -99,10 +101,9 @@ const AGING_STYLES = {
 // ── Ticket filter config (ticket-centric, not project-centric) ───────────────
 // "For Review" is a Userback workflow name, not one of our status groups, so it
 // works like Aging: a cross-cutting filter over every active ticket.
-// Userback workflow names that all mean "waiting on a review"
-const REVIEW_STATUSES = ['for review', 'under review', 'please review'];
-const isForReview = t => REVIEW_STATUSES.includes((t.workflowName || '').trim().toLowerCase().replace(/\s+/g, ' '));
-const isAgingTicket = t => { const days = getDaysSince(t.updatedAt || t.createdAt); return days !== null && days >= 30; };
+// Review statuses (For Review, Under Review, Please Review) and the aging rules live in
+// lib/statuses.js. Review tickets are with the client, so they don't count as Aging.
+const isForReview = isReviewTicket;
 
 const FILTER_CONFIG = {
   all:        { label: 'All',         color: 'var(--ink)',                 bg: 'var(--ink)',                  textActive: 'var(--ink-contrast)' },
@@ -202,8 +203,8 @@ function FilterLegend() {
                     {key === 'onhold' && 'Tickets parked or waiting — something is preventing progress'}
                     {key === 'inprogress' && 'Actively being worked on'}
                     {key === 'open' && 'Logged but not yet started'}
-                    {key === 'forreview' && 'Waiting on a review: For Review, Under Review or Please Review'}
-                    {key === 'aging' && 'Not updated in 30+ days — needs attention or should be closed'}
+                    {key === 'forreview' && `With the client: For Review, Under Review or Please Review. ${WAITING_DAYS}+ days shows under Waiting on client`}
+                    {key === 'aging' && 'Team tickets not updated in 30+ days. Tickets in review are left out'}
                     {key === 'resolved' && 'Closed within the last 7 days'}
                   </div>
                 </div>
@@ -483,10 +484,7 @@ function NeedsAttentionPanel({ projects }) {
     (d.inProgress || []).forEach(i => allTickets.push(tag(i)));
     (d.onHold || []).forEach(i => allTickets.push(tag(i)));
   }
-  const aging = allTickets.filter(t => {
-    const days = getDaysSince(t.updatedAt || t.createdAt);
-    return days !== null && days >= 30;
-  });
+  const aging = allTickets.filter(isAgingTicket);
   if (aging.length === 0) return null;
   const sorted = sortByUrgency(aging);
   const critical = sorted.filter(t => getAgingLevel(getDaysSince(t.updatedAt || t.createdAt)) === 'critical');
@@ -510,15 +508,41 @@ function NeedsAttentionPanel({ projects }) {
   );
 }
 
+// ── Waiting on client ────────────────────────────────────────────────────────
+// Tickets sitting in review for a while: not the team's to fix, but worth a nudge.
+function WaitingOnClientPanel({ projects }) {
+  const waiting = [];
+  for (const p of projects) {
+    const d = p.data;
+    if (!d) continue;
+    for (const list of [d.open, d.inProgress, d.onHold]) {
+      for (const t of list || []) if (isWaitingOnClient(t)) waiting.push({ ...t, _projectName: p.name });
+    }
+  }
+  if (waiting.length === 0) return null;
+
+  return (
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderLeft: '4px solid #8b5cf6', borderRadius: '10px',
+      padding: '20px', marginBottom: '20px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Waiting on client</span>
+        <span style={{ fontSize: '13px', fontFamily: 'var(--mono)', fontWeight: '600', background: '#8b5cf6', color: '#fff', padding: '2px 10px', borderRadius: '10px' }}>{waiting.length}</span>
+        <span style={{ fontSize: '14px', color: 'var(--muted)' }}>in review for {WAITING_DAYS}+ days, worth a nudge</span>
+      </div>
+      <TicketSection title="Oldest first" items={waiting} color="#8b5cf6" bgColor="var(--review-bg)" showProject defaultOpen={false} />
+    </div>
+  );
+}
+
 // ── Project card ─────────────────────────────────────────────────────────────
 function ProjectCard({ project }) {
   const [expanded, setExpanded] = useState(true);
   const d = project.data;
   const allActive = [...(d?.open || []), ...(d?.inProgress || []), ...(d?.onHold || [])];
-  const aging30 = allActive.filter(t => {
-    const days = getDaysSince(t.updatedAt || t.createdAt);
-    return days !== null && days >= 30;
-  }).length;
+  const aging30 = allActive.filter(isAgingTicket).length;
 
   return (
     <div style={{
@@ -740,7 +764,7 @@ function TableRow({ item, index }) {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
-export default function Dashboard() {
+export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const router = useRouter();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -784,20 +808,53 @@ export default function Dashboard() {
   function setProjectFilter(val) { setProjectState(val); updateURL(filter, assigneeFilter, val, viewMode); }
   function setViewMode(val) { setViewModeState(val); updateURL(filter, assigneeFilter, projectFilter, val); }
 
+  // Cached copy first (opens instantly), then a fresh copy in the background if it's stale.
+  // Refresh always asks Userback directly.
+  const [updating, setUpdating]         = useState(false);
+  const [refreshError, setRefreshError] = useState(null);
+
+  const loadFresh = useCallback(async ({ background = false } = {}) => {
+    if (background) setUpdating(true); else setLoading(true);
+    setRefreshError(null);
+    try {
+      const res = await fetch('/api/data?fresh=1');
+      if (res.status === 401) { router.push('/'); return; }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Couldn’t load data from Userback');
+      setData(json);
+      setLastFetch(new Date(json.fetchedAt));
+      setError(null);
+    } catch (err) {
+      // Keep showing what we have; only treat it as a page error if there's nothing on screen
+      setData(prev => { if (!prev) setError(err.message); else setRefreshError(err.message); return prev; });
+    } finally { setLoading(false); setUpdating(false); }
+  }, [router]);
+
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const res = await fetch('/api/data');
       if (res.status === 401) { router.push('/'); return; }
-      if (!res.ok) throw new Error('Failed to load data');
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Failed to load data');
       setData(json);
-      setLastFetch(new Date());
-    } catch (err) { setError(err.message); }
-    finally { setLoading(false); }
-  }, [router]);
+      setLastFetch(new Date(json.fetchedAt));
+      setLoading(false);
+      if (json.stale) loadFresh({ background: true });
+    } catch (err) { setError(err.message); setLoading(false); }
+  }, [router, loadFresh]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Start on the signed-in person's own queue, unless the link already picks a team
+  const defaultedTeam = useRef(false);
+  useEffect(() => {
+    if (defaultedTeam.current || !router.isReady || !data || !userEmail) return;
+    defaultedTeam.current = true;
+    if (router.query.team) return;
+    const me = (data.teamMembers || []).find(m => (m.email || '').toLowerCase() === userEmail.toLowerCase());
+    if (me) setAssigneeFilter(me.name);
+  }, [router.isReady, data, userEmail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {
     await signOut({ callbackUrl: '/' });
@@ -903,9 +960,19 @@ export default function Dashboard() {
 
   const allTickets = data ? getAllTickets(scopedProjects) : null;
 
+  // Hide projects with nothing to show under the current filters (errors still show)
+  const hasTickets = p => {
+    const d = p.data;
+    if (!d) return false;
+    if (d.error) return true;
+    return (d.open?.length || 0) + (d.inProgress?.length || 0) + (d.onHold?.length || 0)
+      + (d.resolvedThisWeek?.length || 0) > 0;
+  };
+
   const filteredProjects = scopedProjects
     .map(p => filterByStatus(p, filter))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(hasTickets);
 
   // Easter egg: show a GIF when the Project/Team selection has no active tickets
   // (On Hold, In Progress and Open all 0). Resolved tickets don't count.
@@ -930,13 +997,13 @@ export default function Dashboard() {
           </div>
           <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
             <button onClick={() => router.push('/dashboard')} style={{ background: 'rgba(247,173,57,0.15)', color: '#f7ad39', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Dashboard</button>
-            <button onClick={() => router.push('/admin')} style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Admin</button>
+            {canAdmin && <button onClick={() => router.push('/admin')} style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Admin</button>}
           </nav>
           <div style={{ flex: 1 }} />
           <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <ThemeToggle />
             {lastFetch && <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--mono)' }}>{lastFetch.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}</span>}
-            <button onClick={fetchData} disabled={loading} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: loading ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500' }}>{loading ? '⟳' : '↺ Refresh'}</button>
+            <button onClick={() => loadFresh()} disabled={loading || updating} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: loading || updating ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500' }}>{loading || updating ? '⟳ Updating…' : '↺ Refresh'}</button>
             <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
           </div>
         </header>
@@ -949,8 +1016,11 @@ export default function Dashboard() {
               {data && !loading && <span style={{ fontSize: '15px', color: 'var(--muted)' }}>{data.projects.length} projects</span>}
             </div>
             {lastFetch && !loading && (
-              <span style={{ fontSize: '13px', color: 'var(--muted)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>
-                Updated {lastFetch.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              <span style={{ fontSize: '13px', color: refreshError ? 'var(--red)' : 'var(--muted)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}
+                title={refreshError || undefined}>
+                {updating ? 'Updating from Userback…'
+                  : refreshError ? `Couldn’t refresh. Showing ${lastFetch.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                  : `Updated ${lastFetch.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
           </div>
@@ -1168,6 +1238,7 @@ export default function Dashboard() {
               ) : (
                 <>
                   {filter === 'all' && <NeedsAttentionPanel projects={filteredProjects} />}
+                  {(filter === 'all' || filter === 'forreview') && <WaitingOnClientPanel projects={filteredProjects} />}
 
                   {filteredProjects.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { getUser } from '../lib/auth';
+import { getUser, isAdmin } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
-  if (!(await getUser(req))) {
+  const user = await getUser(req);
+  if (!user) {
     return { redirect: { destination: `/?next=${encodeURIComponent(resolvedUrl)}`, permanent: false } };
   }
+  if (!isAdmin(user)) return { redirect: { destination: '/dashboard', permanent: false } };
   return { props: {} };
 }
 
@@ -104,6 +106,23 @@ export default function Admin() {
   const [slackSaved, setSlackSaved]       = useState(false);
   const [slackError, setSlackError]       = useState(null);
   const [testState, setTestState]         = useState({}); // { [userId]: { busy, ok, message } }
+
+  // Userback API health and #alerts
+  const [health, setHealth]       = useState(null);
+  const [alertTest, setAlertTest] = useState(null); // { busy } | { ok, message }
+
+  useEffect(() => {
+    fetch('/api/admin/health').then(r => (r.ok ? r.json() : null)).then(setHealth).catch(() => {});
+  }, []);
+
+  async function sendTestAlert() {
+    setAlertTest({ busy: true });
+    try {
+      const r = await fetch('/api/admin/health', { method: 'POST' });
+      const d = await r.json();
+      setAlertTest({ ok: d.ok, message: d.ok ? 'Sent' : d.error });
+    } catch (err) { setAlertTest({ ok: false, message: err.message }); }
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -419,6 +438,47 @@ export default function Admin() {
                   cursor: slackSaving ? 'not-allowed' : 'pointer',
                 }}>{slackSaving ? 'Saving...' : 'Save Slack settings'}</button>
                 {slackSaved && <span style={{ fontSize: '14px', color: 'var(--green)', fontWeight: '500' }}>✓ Saved</span>}
+              </div>
+
+              {/* ── Userback API alerts ─────────────────────────────── */}
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', margin: '48px 0 8px' }}>
+                Userback API alerts
+              </h2>
+              <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+                The dashboard checks the Userback API once a day. If it fails two days running, a message goes to your alerts channel, and another when it recovers.
+              </p>
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px',
+                padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
+              }}>
+                <div style={{ flex: 1, minWidth: '240px', fontSize: '15px', color: 'var(--text)', lineHeight: 1.6 }}>
+                  {!health ? 'Checking…' : (
+                    <>
+                      <div>
+                        Right now: {health.live?.ok
+                          ? <strong style={{ color: 'var(--green)' }}>working</strong>
+                          : <strong style={{ color: 'var(--red)' }}>failing{health.live?.status ? ` (HTTP ${health.live.status})` : ''}</strong>}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                        {health.lastCheck ? `Last daily check ${new Date(health.lastCheck.at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}: ${health.lastCheck.ok ? 'OK' : 'failed'}` : 'No daily check has run yet'}
+                        {health.failing && ` (failing since ${health.failing.firstFail}${health.failing.alerted ? ', alert sent' : ''})`}
+                      </div>
+                      {!health.alertsChannelSet && (
+                        <div style={{ fontSize: '13px', color: 'var(--red)' }}>SLACK_ALERTS_CHANNEL isn’t set in Vercel, so alerts can’t be sent.</div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <button onClick={sendTestAlert} disabled={alertTest?.busy} style={{
+                  background: 'var(--surface2)', border: '1px solid var(--border2)', color: 'var(--text)',
+                  borderRadius: '6px', fontSize: '13px', fontWeight: '500', padding: '8px 14px',
+                  cursor: alertTest?.busy ? 'not-allowed' : 'pointer',
+                }}>{alertTest?.busy ? 'Sending...' : 'Send test alert'}</button>
+                {alertTest && !alertTest.busy && (
+                  <span style={{ fontSize: '13px', color: alertTest.ok ? 'var(--green)' : 'var(--red)' }}>
+                    {alertTest.ok ? '✓ Sent' : alertTest.message}
+                  </span>
+                )}
               </div>
             </>
           )}

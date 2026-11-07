@@ -1,55 +1,27 @@
 import { getUser } from '../../lib/auth';
-import { fetchAllProjects, fetchProjectTasks, computeHealth, getTeamMembers } from '../../lib/userback';
-import { kv } from '@vercel/kv';
-import { reconcileFromProjects } from '../../lib/scoreboard';
+import { refreshDashboardData, getCachedDashboardData, FRESH_FOR_MS } from '../../lib/dashboard-data';
 
-const delay = ms => new Promise(r => setTimeout(r, ms));
+export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (!(await getUser(req))) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 
-  try {
-    // Auto-discover projects and fetch budget config
-    const [projects, budgets] = await Promise.all([
-      fetchAllProjects(),
-      kv.get('budgets').catch(() => ({})),
-    ]);
+  const wantFresh = req.query.fresh === '1';
 
-    // Fetch Userback data sequentially
-    const results = [];
-    for (const project of projects) {
-      const data = await fetchProjectTasks(project.id);
-      const health = computeHealth(data);
-      const budget = (budgets || {})[project.id] || null;
-
-      results.push({
-        name: project.name,
-        userbackId: project.id,
-        health,
-        totalActive: data?.total || 0,
-        data,
-        budget,
-      });
-
-      await delay(200);
+  if (!wantFresh) {
+    const cached = await getCachedDashboardData();
+    if (cached) {
+      const age = Date.now() - new Date(cached.fetchedAt).getTime();
+      return res.status(200).json({ ...cached, cached: true, stale: age > FRESH_FOR_MS });
     }
+  }
 
-    results.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Scoreboard safety net: compare against the stored snapshot using data we already have
-    try { await reconcileFromProjects(results); }
-    catch (err) { console.error('Score reconcile failed:', err.message); }
-    const teamMembers = getTeamMembers();
-
-    return res.status(200).json({
-      projects: results,
-      teamMembers,
-      fetchedAt: new Date().toISOString(),
-    });
+  try {
+    return res.status(200).json(await refreshDashboardData());
   } catch (err) {
     console.error('Data fetch error:', err);
-    return res.status(500).json({ error: 'Failed to fetch data' });
+    return res.status(502).json({ error: err.message || 'Failed to fetch data from Userback' });
   }
 }

@@ -1,13 +1,13 @@
-import { getUser } from '../../../lib/auth';
+import { getUser, isAdmin } from '../../../lib/auth';
 import { kv } from '@vercel/kv';
 import { SLACK_SETTINGS_KEY } from '../../../lib/weekly-slack';
 
 const SLACK_ID = /^[UW][A-Z0-9]{6,}$/;
 
 export default async function handler(req, res) {
-  if (!(await getUser(req))) {
-    return res.status(401).json({ error: 'Unauthorised' });
-  }
+  const user = await getUser(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorised' });
+  if (!isAdmin(user)) return res.status(403).json({ error: 'Admin access only' });
 
   if (req.method === 'GET') {
     try {
