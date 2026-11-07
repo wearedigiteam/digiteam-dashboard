@@ -107,6 +107,36 @@ export default function Admin() {
   const [slackError, setSlackError]       = useState(null);
   const [testState, setTestState]         = useState({}); // { [userId]: { busy, ok, message } }
 
+  // Team birthdays (month and day only)
+  const [bdays, setBdays]           = useState({}); // { [email]: 'MM-DD' }
+  const [bdaySaving, setBdaySaving] = useState(false);
+  const [bdayMsg, setBdayMsg]       = useState(null); // { ok, text }
+  useEffect(() => {
+    fetch('/api/birthdays').then(r => (r.ok ? r.json() : { birthdays: [] }))
+      .then(d => setBdays(Object.fromEntries((d.birthdays || []).map(b => [b.email.toLowerCase(), b.md])))).catch(() => {});
+  }, []);
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function setBday(email, part, value) {
+    setBdays(prev => {
+      const [m = '', d = ''] = (prev[email] || '').split('-');
+      const next = part === 'm' ? [value, d] : [m, value];
+      return { ...prev, [email]: next[0] || next[1] ? `${next[0]}-${next[1]}` : '' };
+    });
+    setBdayMsg(null);
+  }
+  async function saveBdays() {
+    setBdaySaving(true); setBdayMsg(null);
+    try {
+      const list = members.filter(m => m.email).map(m => ({ email: m.email, name: m.name, md: bdays[m.email.toLowerCase()] || '' }))
+        .filter(b => /^\d{2}-\d{2}$/.test(b.md));
+      const r = await fetch('/api/birthdays', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ birthdays: list }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Save failed');
+      setBdayMsg({ ok: true, text: '✓ Saved' });
+    } catch (err) { setBdayMsg({ ok: false, text: err.message }); }
+    finally { setBdaySaving(false); }
+  }
+
   // Userback API health and #alerts
   const [health, setHealth]       = useState(null);
   const [alertTest, setAlertTest] = useState(null); // { busy } | { ok, message }
@@ -438,6 +468,42 @@ export default function Admin() {
                   cursor: slackSaving ? 'not-allowed' : 'pointer',
                 }}>{slackSaving ? 'Saving...' : 'Save Slack settings'}</button>
                 {slackSaved && <span style={{ fontSize: '14px', color: 'var(--green)', fontWeight: '500' }}>✓ Saved</span>}
+              </div>
+
+
+              {/* ── Team birthdays ─────────────────────────────────── */}
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', margin: '48px 0 8px' }}>
+                Team birthdays
+              </h2>
+              <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+                Month and day only. For the week before, everyone else sees a countdown in the header and gets a heads-up in their Monday DM. The birthday person sees nothing until the day, when Bruno throws a party.
+              </p>
+              {members.filter(m => m.email).map(m => {
+                const [mm = '', dd = ''] = (bdays[m.email.toLowerCase()] || '').split('-');
+                const sel = { background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: '8px', color: 'var(--text)', fontSize: '14px', padding: '8px 10px' };
+                return (
+                  <div key={m.email} style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', flexWrap: 'wrap',
+                    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', marginBottom: '8px',
+                  }}>
+                    <div style={{ flex: 1, minWidth: '180px', fontSize: '15px', fontWeight: '500', color: 'var(--text)' }}>{m.name}</div>
+                    <select aria-label={`Birthday month for ${m.name}`} value={mm} onChange={e => setBday(m.email.toLowerCase(), 'm', e.target.value)} style={sel}>
+                      <option value="">Month</option>
+                      {MONTHS.map((name, i) => <option key={name} value={String(i + 1).padStart(2, '0')}>{name}</option>)}
+                    </select>
+                    <select aria-label={`Birthday day for ${m.name}`} value={dd} onChange={e => setBday(m.email.toLowerCase(), 'd', e.target.value)} style={sel}>
+                      <option value="">Day</option>
+                      {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => <option key={d} value={d}>{Number(d)}</option>)}
+                    </select>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '16px' }}>
+                <button onClick={saveBdays} disabled={bdaySaving} style={{
+                  background: bdaySaving ? 'var(--border2)' : 'var(--orange)', border: 'none', color: '#fff', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: '600', padding: '10px 22px', cursor: bdaySaving ? 'not-allowed' : 'pointer',
+                }}>{bdaySaving ? 'Saving...' : 'Save birthdays'}</button>
+                {bdayMsg && <span style={{ fontSize: '14px', color: bdayMsg.ok ? 'var(--green)' : 'var(--red)', fontWeight: '500' }}>{bdayMsg.text}</span>}
               </div>
 
               {/* ── Userback API alerts ─────────────────────────────── */}

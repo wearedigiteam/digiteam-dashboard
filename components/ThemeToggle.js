@@ -5,18 +5,26 @@ import { useState, useEffect } from 'react';
 const COOKIE = 'dt_theme';
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
+export function applyTheme(next) {
+  document.documentElement.dataset.theme = next;
+  document.cookie = `${COOKIE}=${next}; Path=/; Max-Age=${ONE_YEAR}; SameSite=Lax${
+    location.protocol === 'https:' ? '; Secure' : ''}`;
+  window.dispatchEvent(new CustomEvent('dt-theme', { detail: next }));
+}
+
 export default function ThemeToggle() {
   const [theme, setTheme] = useState(null); // null until mounted, avoids a hydration mismatch
 
   useEffect(() => {
     setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+    const onChange = e => setTheme(e.detail);
+    window.addEventListener('dt-theme', onChange);
+    return () => window.removeEventListener('dt-theme', onChange);
   }, []);
 
   function toggle() {
     const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    document.cookie = `${COOKIE}=${next}; Path=/; Max-Age=${ONE_YEAR}; SameSite=Lax${
-      location.protocol === 'https:' ? '; Secure' : ''}`;
+    applyTheme(next);
     setTheme(next);
   }
 

@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { question, ticketData } = req.body;
+  const { question, ticketData, aprilFools } = req.body;
   if (!question) {
     return res.status(400).json({ error: 'No question provided' });
   }
@@ -69,6 +69,10 @@ IMPORTANT FORMATTING RULES:
 
 Current ticket data:
 ${contextLines.join('\n')}`;
+  // April 1 only: same facts, delivered in peak corporate jargon
+  const tone = aprilFools
+    ? '\n\nToday is April Fools\' Day: answer in exaggerated corporate buzzwords (synergy, leverage, circle back, move the needle), but keep every fact, number and ticket link exactly right.'
+    : '';
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -81,7 +85,7 @@ ${contextLines.join('\n')}`;
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1500,
-        system: systemPrompt,
+        system: systemPrompt + tone,
         messages: [{ role: 'user', content: question }],
       }),
     });

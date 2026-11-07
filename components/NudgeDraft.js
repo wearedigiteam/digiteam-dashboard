@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { tabTitle, useTabTitleOverride } from './tabTitle';
+import { BrunoAvatar } from './Bruno';
 
 // Modal that drafts a follow-up email for one client's waiting tickets.
 export default function NudgeDraft({ project, tickets, onClose }) {
@@ -96,7 +97,11 @@ export default function NudgeDraft({ project, tickets, onClose }) {
         boxShadow: '0 16px 48px var(--shadow)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text)', flex: 1 }}>Follow-up for {project}</h2>
+          <BrunoAvatar size={36} />
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text)' }}>Follow-up for {project}</h2>
+            <div style={{ fontSize: '13px', color: 'var(--muted)' }}>{busy ? 'Bruno is drafting…' : 'Drafted by Bruno. Edit anything before you send it.'}</div>
+          </div>
           <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             Spelling
             <select value={spelling} disabled={busy} onChange={e => { setSpelling(e.target.value); generate(e.target.value); }}
@@ -108,7 +113,7 @@ export default function NudgeDraft({ project, tickets, onClose }) {
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '20px', lineHeight: 1 }}>×</button>
         </div>
 
-        {busy && <div style={{ color: 'var(--muted)', fontSize: '15px', padding: '30px 0', textAlign: 'center' }}>Drafting…</div>}
+        {busy && <div style={{ color: 'var(--muted)', fontSize: '15px', padding: '30px 0', textAlign: 'center' }}>Bruno is drafting…</div>}
         {error && !busy && <div style={{ color: 'var(--red)', fontSize: '14px' }}>{error}</div>}
 
         {draft && !busy && (

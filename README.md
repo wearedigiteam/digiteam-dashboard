@@ -40,3 +40,7 @@ Scores are also checked against a stored snapshot on every dashboard load and on
 ### Speed
 
 The dashboard serves a cached copy of the Userback data (in KV) so it opens instantly, then refreshes in the background if the copy is over a minute old. Refresh always fetches fresh data, and the daily cron keeps the cache warm.
+
+### Easter eggs
+
+Seasonal and hidden extras live in `components/eggs.js` (dates, Bruno's canned replies) and `components/EggOverlays.js`. Team birthdays are entered on the Admin tab and stored in KV, never in this repo. Once-per-person eggs are tracked by `/api/eggs/claim`.

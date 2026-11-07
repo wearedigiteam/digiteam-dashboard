@@ -6,6 +6,15 @@ import { weekKey } from '../../../lib/scoreboard';
 
 const KINDS = {
   'queue-clear': () => ({ key: `egg:queue-clear:${weekKey()}`, ttl: 60 * 60 * 24 * 14 }),
+  wrapped: () => {
+    const now = new Date();
+    const year = now.getUTCMonth() === 0 ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
+    return { key: `egg:wrapped:${year}`, ttl: 60 * 60 * 24 * 30 };
+  },
+  groundhog: () => ({ key: `egg:groundhog:${new Date().getUTCFullYear()}`, ttl: 60 * 60 * 24 * 7 }),
+  'april-fools': () => ({ key: `egg:aprilfools:${new Date().getUTCFullYear()}`, ttl: 60 * 60 * 24 * 7 }),
+  midnight: () => ({ key: `egg:midnight:${weekKey()}`, ttl: 60 * 60 * 24 * 14 }),
+  'my-birthday': () => ({ key: `egg:mybirthday:${new Date().getUTCFullYear()}`, ttl: 60 * 60 * 24 * 7 }),
   birthday: () => ({ key: `egg:birthday:${new Date().getUTCFullYear()}`, ttl: 60 * 60 * 24 * 14 }),
   christmas: () => {
     const now = new Date();

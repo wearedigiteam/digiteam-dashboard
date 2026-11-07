@@ -5,10 +5,12 @@ import { getUser, isAdmin } from '../lib/auth';
 import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
 import NudgeDraft from '../components/NudgeDraft';
 import { tabTitle, shorten, useTabTitleOverride, useTabTitleTop } from '../components/tabTitle';
-import { getSeason, isSnowing, fossilEra, brunoReply, showToast, useKonami, claimEgg, isFridayAfternoon } from '../components/eggs';
-import { ChristmasOverlay, BirthdayOverlay, TrophyOverlay, ToastHost } from '../components/EggOverlays';
+import { getSeason, isSnowing, fossilEra, brunoReply, showToast, useKonami, claimEgg, isFridayAfternoon,
+  isProgrammersDay, isGroundhogDay, isAprilFools, isWrappedSeason, isLateNight, birthdayStatus } from '../components/eggs';
+import { ChristmasOverlay, BirthdayOverlay, TrophyOverlay, ToastHost, WrappedOverlay, MyBirthdayOverlay } from '../components/EggOverlays';
+import { BrunoAvatar, BrunoSays } from '../components/Bruno';
+import ThemeToggle, { applyTheme } from '../components/ThemeToggle';
 import { signOut } from 'next-auth/react';
-import ThemeToggle from '../components/ThemeToggle';
 import ThumbPreview from '../components/ThumbPreview';
 import EasterEgg, { EGG_GIFS } from '../components/EasterEgg';
 import TeamScoreboard from '../components/TeamScoreboard';
@@ -301,7 +303,7 @@ function useSolve(item, projectName) {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setPosted(true);
-      if (isFridayAfternoon()) showToast('Deploying on a Friday, are we? 🙃');
+      if (isFridayAfternoon()) showToast('Deploying on a Friday, are we? 🙃', 5000, { bruno: true });
     } catch (err) { setError(err.message); }
     finally { setPosting(false); }
   }
@@ -340,7 +342,7 @@ function SolveExpander({ solve }) {
       {solve.solution && !solve.loading && (
         <>
           <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            Bruno’s suggestion {solve.posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
+            <BrunoAvatar size={22} className="dt-inline-avatar" /> Bruno’s suggestion {solve.posted && <span style={{ color: 'var(--green)', textTransform: 'none', letterSpacing: 0 }}>— ✓ Posted to Userback</span>}
           </div>
           <textarea
             value={solve.solution}
@@ -929,14 +931,20 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   }
 
   async function sendToAI(prompt) {
-    const canned = brunoReply(prompt);
-    if (canned) { setAiError(null); setAiReply(canned); return; }
+    const canned = brunoReply(prompt, { birthdayToday: birthdays.today[0] || null });
+    if (canned) {
+      setAiError(null);
+      if (typeof canned === 'string') { setAiReply(canned); return; }
+      setAiReply(canned.html);
+      if (canned.action === 'wrapped') setWrappedOpen(true);
+      return;
+    }
     setAiLoading(true); setAiError(null); setAiReply('');
     try {
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: prompt, ticketData: data }),
+        body: JSON.stringify({ question: prompt, ticketData: data, aprilFools: isAprilFools() }),
       });
       const json = await res.json();
       if (json.error) { setAiError(json.error); return; }
@@ -1065,14 +1073,60 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const [snowing, setSnowing] = useState(false);
   const [xmas, setXmas] = useState(null);       // 'countdown' | 'verdict'
   const [birthday, setBirthday] = useState(false);
-  const closeXmas = useCallback(() => setXmas(null), []);
+  const [wrappedOpen, setWrappedOpen] = useState(false);
+  const [wrappedQueued, setWrappedQueued] = useState(false); // waits for the Christmas verdict to close
+  const [hexDay, setHexDay] = useState(false);
+  const [fools, setFools] = useState(false);
+  const closeXmas = useCallback(() => {
+    setXmas(null);
+    setWrappedQueued(q => { if (q) setWrappedOpen(true); return false; });
+  }, []);
   const closeBirthday = useCallback(() => setBirthday(false), []);
+  const closeWrapped = useCallback(() => setWrappedOpen(false), []);
   useEffect(() => {
     const s = getSeason();
-    setSeason(s); setSnowing(isSnowing());
-    if (s === 'christmas') claimEgg('christmas').then(first => first && setXmas('verdict'));
-    if (s === 'canada-day') claimEgg('birthday').then(first => first && setBirthday(true));
+    setSeason(s); setSnowing(isSnowing()); setHexDay(isProgrammersDay()); setFools(isAprilFools());
+    (async () => {
+      const verdict = s === 'christmas' && await claimEgg('christmas');
+      if (verdict) setXmas('verdict');
+      if (isWrappedSeason() && await claimEgg('wrapped')) {
+        if (verdict) setWrappedQueued(true); else setWrappedOpen(true);
+      }
+      if (s === 'canada-day' && await claimEgg('birthday')) setBirthday(true);
+      // Late at night in light mode: Bruno suggests dark mode, at most once a week
+      if (isLateNight() && document.documentElement.dataset.theme !== 'dark' && await claimEgg('midnight')) {
+        showToast('Burning the midnight oil? Easier on the eyes in dark mode.', 9000,
+          { bruno: true, action: { label: 'Switch to dark', onClick: () => applyTheme('dark') } });
+      }
+    })();
   }, []);
+
+  // Team birthdays: a countdown for everyone else the week before, a party for the person on the day
+  const [birthdayList, setBirthdayList] = useState([]);
+  const [myParty, setMyParty] = useState(false);
+  useEffect(() => {
+    fetch('/api/birthdays').then(r => (r.ok ? r.json() : { birthdays: [] })).then(d => setBirthdayList(d.birthdays || [])).catch(() => {});
+  }, []);
+  const birthdays = birthdayStatus(birthdayList, userEmail);
+  useEffect(() => {
+    if (birthdays.mine) claimEgg('my-birthday').then(first => first && setMyParty(true));
+  }, [birthdays.mine]); // eslint-disable-line react-hooks/exhaustive-deps
+  const myFirstName = (myName || '').split(' ')[0] || 'friend';
+  const bigMoment = Boolean(xmas || birthday || wrappedOpen || myParty);
+
+  // Groundhog Day: Bruno points out the same aging tickets as yesterday
+  const groundhogDone = useRef(false);
+  useEffect(() => {
+    if (groundhogDone.current || !data || !allTickets || !isGroundhogDay()) return;
+    groundhogDone.current = true;
+    claimEgg('groundhog').then(first => {
+      if (!first) return;
+      const n = allTickets.aging.length;
+      showToast(n
+        ? `It’s Groundhog Day. Here are the same ${n} aging ticket${n === 1 ? '' : 's'} as yesterday.`
+        : 'It’s Groundhog Day, and for once nothing is aging. Six more weeks of this, please.', 10000, { bruno: true });
+    });
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const logoClicks = useRef([]);
   const [logoBurst, setLogoBurst] = useState(false);
   function onLogoClick() {
@@ -1109,7 +1163,18 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
             </span>
             {season === 'halloween' && <span className="dt-season-badge" aria-hidden="true">🎃</span>}
             {season === 'canada-day' && <span className="dt-season-badge" aria-hidden="true">🍁</span>}
+            {hexDay && <span className="dt-hex-badge" aria-hidden="true" title="Programmers’ Day: day 256 of the year">0x100</span>}
             <span className="dt-header-brand-text">digiteam</span>
+            {birthdays.today.filter(n => !(birthdays.mine && n === myFirstName)).map(n => (
+              <span key={n} className="dt-bday-badge">🎂 {n}’s birthday today</span>
+            ))}
+            {birthdays.upcoming.slice(0, 2).map(b => (
+              <button key={b.name} className="dt-bday-badge"
+                onClick={() => showToast(`Shh. Don’t tell ${b.name}. Birthday’s in ${b.inDays} day${b.inDays === 1 ? '' : 's'}.`, 6000, { bruno: true })}
+                title={`${b.name}’s birthday is in ${b.inDays} day${b.inDays === 1 ? '' : 's'}`}>
+                🎂 {b.name} · {b.inDays === 1 ? 'tomorrow' : `${b.inDays} days`}
+              </button>
+            ))}
             {season === 'advent' && (
               <button onClick={() => setXmas('countdown')} className="dt-tree" title="…if we’re still doing this by Christmas…" aria-label="Christmas countdown">🎄</button>
             )}
@@ -1128,10 +1193,13 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
         </header>
 
         <main className="dt-main">
-          <EasterEgg open={emptyEgg} onClose={hideEmptyEgg} src={EGG_GIFS.noResults} />
-          {trophy && <TrophyOverlay onClose={hideTrophy} />}
+          {/* One overlay at a time: the smaller eggs wait for a bigger celebration to close */}
+          <EasterEgg open={emptyEgg && !bigMoment} onClose={hideEmptyEgg} src={EGG_GIFS.noResults} />
+          {trophy && !bigMoment && <TrophyOverlay onClose={hideTrophy} />}
           {xmas && <ChristmasOverlay mode={xmas} onClose={closeXmas} />}
           {birthday && <BirthdayOverlay onClose={closeBirthday} />}
+          {wrappedOpen && <WrappedOverlay onClose={closeWrapped} />}
+          {myParty && <MyBirthdayOverlay name={myFirstName} onClose={() => setMyParty(false)} />}
           <ToastHost />
           <div className="dt-page-title" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1159,6 +1227,13 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
             <div style={{ background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33', borderRadius: '10px', padding: '18px 22px', color: 'var(--red)', fontSize: '15px', marginBottom: '20px' }}>Error: {error}</div>
           )}
 
+          {fools && (
+            <div className="dt-fools" role="note">
+              <BrunoAvatar size={34} />
+              <span><strong>Welcome to Digiteam Enterprise Synergy Cloud™.</strong> Your tickets have been leveraged into actionable deliverables. Bruno is circling back.</span>
+              <button onClick={() => setFools(false)}>Happy April Fools’</button>
+            </div>
+          )}
           {data && <TeamScoreboard refreshKey={lastFetch?.getTime()} />}
 
           {data && allTickets && (
@@ -1253,7 +1328,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                     fontSize: '14px', color: 'var(--muted)', fontWeight: '500',
                     width: '100%',
                   }}>
-                    <span style={{ fontSize: '18px' }}>✦</span>
+                    <BrunoAvatar size={26} />
                     Ask Bruno about your tickets...
                   </button>
                 ) : (
@@ -1266,7 +1341,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                       display: 'flex', alignItems: 'center', gap: '8px',
                       padding: '12px 16px', borderBottom: '1px solid var(--border)',
                     }}>
-                      <span style={{ fontSize: '18px' }}>✦</span>
+                      <BrunoAvatar size={30} />
                       <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', flex: 1 }}>Bruno</span>
                       <button onClick={() => setAiOpen(false)} style={{
                         background: 'none', border: 'none', color: 'var(--muted)',
@@ -1316,15 +1391,13 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                     )}
 
                     {aiReply && !aiLoading && (
-                      <div
-                        className="dt-ai-response"
-                        style={{
-                          padding: '16px', fontSize: '14px', color: 'var(--text)',
-                          lineHeight: 1.6,
-                          maxHeight: '500px', overflowY: 'auto',
-                        }}
-                        dangerouslySetInnerHTML={{ __html: aiReply }}
-                      />
+                      <BrunoSays style={{ padding: '16px' }}>
+                        <div
+                          className="dt-ai-response"
+                          style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 1.6, maxHeight: '500px', overflowY: 'auto' }}
+                          dangerouslySetInnerHTML={{ __html: aiReply }}
+                        />
+                      </BrunoSays>
                     )}
 
                     {/* Input */}

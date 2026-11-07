@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { christmasInfo, companyAge, useToast } from './eggs';
+import { BrunoAvatar } from './Bruno';
 
 function useEscape(onClose) {
   useEffect(() => {
@@ -108,5 +109,74 @@ export function TrophyOverlay({ onClose }) {
 export function ToastHost() {
   const toast = useToast();
   if (!toast) return null;
-  return <div key={toast.id} role="status" className="dt-toast">{toast.message}</div>;
+  return (
+    <div key={toast.id} role="status" className={toast.bruno ? 'dt-toast dt-toast-bruno' : 'dt-toast'}>
+      {toast.bruno && <BrunoAvatar size={30} />}
+      <span>{toast.message}</span>
+      {toast.action && <button onClick={toast.action.onClick}>{toast.action.label}</button>}
+    </div>
+  );
+}
+
+// Your own birthday: Bruno shows up with "presents"
+export function MyBirthdayOverlay({ name, onClose }) {
+  return (
+    <Backdrop onClose={onClose} label="Happy birthday">
+      <Shower colors={['#f05a27', '#f7ad39', '#8b5cf6', '#378add', '#2d8a4e']} />
+      <div className="dt-egg-card">
+        <BrunoAvatar size={88} className="dt-bruno-party" />
+        <strong>Happy birthday, {name}! 🎂</strong>
+        <span>Bruno got you nothing. He’s a baboon. But the team’s glad you’re still doing this.</span>
+      </div>
+    </Backdrop>
+  );
+}
+
+// Dec 31 – Jan 6: "Digiteam Wrapped", team numbers only, presented by Bruno
+export function WrappedOverlay({ onClose }) {
+  const [y, setY] = useState(null);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    fetch('/api/wrapped').then(r => r.json()).then(d => (d.error ? setError(d.error) : setY(d))).catch(e => setError(e.message));
+  }, []);
+  const since = y?.trackingSince && new Date(y.trackingSince).getFullYear() === y.year
+    ? new Date(y.trackingSince).toLocaleDateString('en-CA', { month: 'long', day: 'numeric' }) : null;
+  const weekLabel = w => new Date(`${w}T12:00:00`).toLocaleDateString('en-CA', { month: 'long', day: 'numeric' });
+  const stats = y ? [
+    [y.tickets, 'tickets moved into review'],
+    [y.points, 'team points'],
+    [y.agingCleared, 'tickets rescued from 30+ days of silence'],
+    [y.fossils, `fossil${y.fossils === 1 ? '' : 's'} excavated (over a year old)`],
+    y.longestStreak ? [y.longestStreak, `week${y.longestStreak === 1 ? '' : 's'} in a row hitting the goal`] : null,
+  ].filter(Boolean) : [];
+  return (
+    <Backdrop onClose={onClose} label="Digiteam Wrapped">
+      <div className="dt-wrapped" onClick={e => e.stopPropagation()}>
+        <div className="dt-wrapped-head">
+          <BrunoAvatar size={52} />
+          <div>
+            <h2>Digiteam Wrapped {y?.year || ''}</h2>
+            <span>{since ? `Since tracking started on ${since}` : 'Presented by Bruno'}</span>
+          </div>
+        </div>
+        {error && <p className="dt-wrapped-note">Bruno couldn’t find the numbers: {error}</p>}
+        {!y && !error && <p className="dt-wrapped-note">Bruno is counting…</p>}
+        {y && (
+          <>
+            <div className="dt-wrapped-grid">
+              {stats.map(([n, label]) => (
+                <div key={label}><strong>{Number(n).toLocaleString('en-CA')}</strong><span>{label}</span></div>
+              ))}
+            </div>
+            <ul className="dt-wrapped-list">
+              {y.bestWeek && <li>Best week: <strong>{weekLabel(y.bestWeek.week)}</strong>, {y.bestWeek.points} points.</li>}
+              {y.busiestClient && <li>Kept us busiest: <strong>{y.busiestClient.name}</strong>, {y.busiestClient.tickets} tickets.</li>}
+              <li>Verdict for the year: <strong>still doing this.</strong></li>
+            </ul>
+          </>
+        )}
+        <button onClick={onClose}>Back to work</button>
+      </div>
+    </Backdrop>
+  );
 }
