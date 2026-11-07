@@ -247,6 +247,20 @@ input, select, textarea {
 @keyframes dt-confetti-fall {
   to { transform: translateY(160px) rotate(540deg); opacity: 0; }
 }
+/* Reward message that plays with the confetti */
+.dt-reward-toast {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2;
+  background: var(--ink); color: var(--ink-contrast);
+  font-size: 15px; font-weight: 600; padding: 8px 16px; border-radius: 999px;
+  box-shadow: 0 8px 24px var(--shadow); white-space: nowrap;
+  animation: dt-toast 4s ease forwards;
+}
+@keyframes dt-toast {
+  0% { opacity: 0; transform: translate(-50%, -8px); }
+  10%, 85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
 @media (prefers-reduced-motion: reduce) {
   .dt-confetti { display: none; }
+  .dt-reward-toast { animation: none; }
 }

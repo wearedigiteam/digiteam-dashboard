@@ -36,19 +36,17 @@ function timeAgo(iso) {
 export default function TeamScoreboard({ refreshKey }) {
   const [score, setScore] = useState(null);
   const [showWins, setShowWins] = useState(false);
-  const [celebrate, setCelebrate] = useState(false);
+  const [celebrate, setCelebrate] = useState(null); // list of reward messages while playing
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/score').then(r => (r.ok ? r.json() : null)).then(s => {
       if (cancelled || !s) return;
       setScore(s);
-      // Celebrate once per browser per week when the goal is reached
-      if (s.points >= s.goal && s.goal > 0) {
-        const key = `dt_goal_celebrated_${s.week}`;
-        let seen = false;
-        try { seen = localStorage.getItem(key) === '1'; localStorage.setItem(key, '1'); } catch {}
-        if (!seen) { setCelebrate(true); setTimeout(() => setCelebrate(false), 3500); }
+      // The server decides: each reward plays once for each signed-in person
+      if (s.celebrate?.length) {
+        setCelebrate(s.celebrate);
+        setTimeout(() => setCelebrate(null), 4000);
       }
     }).catch(() => {});
     return () => { cancelled = true; };
@@ -67,6 +65,11 @@ export default function TeamScoreboard({ refreshKey }) {
       borderRadius: '10px', padding: '16px 20px', marginBottom: '20px',
     }}>
       {celebrate && <Confetti />}
+      {celebrate && (
+        <div role="status" className="dt-reward-toast">
+          {celebrate.join(' and ')} 🎉
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
         <h2 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--text)' }}>Team goal this week</h2>
