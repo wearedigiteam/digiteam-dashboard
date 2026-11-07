@@ -90,6 +90,21 @@ function GasGauge({ used, annual }) {
   );
 }
 
+const ADMIN_SECTIONS = [
+  { id: 'budgets',   label: 'Budgets' },
+  { id: 'slack',     label: 'Slack summary' },
+  { id: 'birthdays', label: 'Birthdays' },
+  { id: 'alerts',    label: 'Alerts' },
+];
+
+function AdminIcon({ name }) {
+  const common = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
+  if (name === 'budgets') return <svg {...common}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h3" /></svg>;
+  if (name === 'slack') return <svg {...common}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /><path d="M8.5 11h7M8.5 14h4" /></svg>;
+  if (name === 'birthdays') return <svg {...common}><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M5 16c1.5 1 2.5 1 4 0s2.5-1 4 0 2.5 1 4 0" /><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5Z" /></svg>;
+  return <svg {...common}><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>;
+}
+
 export default function Admin() {
   const router = useRouter();
   const [projects, setProjects] = useState([]);
@@ -98,6 +113,18 @@ export default function Admin() {
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState(null);
+
+  // Which section is showing; kept in the URL (#slack) so a refresh or a link lands in the same place
+  const [section, setSection] = useState('budgets');
+  useEffect(() => {
+    const h = window.location.hash.replace('#', '');
+    if (ADMIN_SECTIONS.some(s => s.id === h)) setSection(h);
+  }, []);
+  function goTo(id) {
+    setSection(id);
+    try { history.replaceState(null, '', `#${id}`); } catch {}
+    window.scrollTo({ top: 0 });
+  }
 
   // Monday Slack summary
   const [members, setMembers]             = useState([]);
@@ -264,7 +291,7 @@ export default function Admin() {
   return (
     <>
       <Head>
-        <title>Admin – Budgets and settings | Digiteam</title>
+        <title>{`Admin – ${ADMIN_SECTIONS.find(x => x.id === section)?.label || 'Settings'} | Digiteam`}</title>
         <meta name="robots" content="noindex,nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -287,13 +314,40 @@ export default function Admin() {
           </nav>
           <div style={{ flex: 1 }} />
           <ThemeToggle />
-          <button onClick={() => router.push('/dashboard')} style={{
+          <button className="dt-hide-mobile" onClick={() => router.push('/dashboard')} style={{
             background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
             color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: '500', padding: '6px 14px',
           }}>← Dashboard</button>
         </header>
 
-        <main className="dt-main" style={{ maxWidth: '900px' }}>
+        <div className="dt-admin">
+          <nav className="dt-admin-nav" aria-label="Admin sections">
+            {ADMIN_SECTIONS.map(sec => (
+              <button key={sec.id} onClick={() => goTo(sec.id)} aria-current={section === sec.id ? 'page' : undefined}
+                className={section === sec.id ? 'dt-admin-link active' : 'dt-admin-link'}>
+                <AdminIcon name={sec.id} />
+                <span>{sec.label}</span>
+                {sec.id === 'alerts' && health && health.live && !health.live.ok && <span className="dt-admin-dot" aria-label="Userback API failing" />}
+              </button>
+            ))}
+          </nav>
+
+          <main className="dt-admin-main">
+          {loading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--muted)', fontSize: '15px' }}>
+              <div style={{ width: '18px', height: '18px', border: '2px solid var(--border)', borderTopColor: 'var(--orange)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              Loading...
+            </div>
+          )}
+
+          {error && (
+            <div style={{ background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33', borderRadius: '10px', padding: '14px 18px', color: 'var(--red)', fontSize: '14px', marginBottom: '20px' }}>
+              {error}
+            </div>
+          )}
+
+            {!loading && section === 'budgets' && (
+              <>
           <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
             Maintenance budgets
           </h1>
@@ -308,23 +362,8 @@ export default function Admin() {
             All amounts exclude HST.
           </div>
 
-          {loading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--muted)', fontSize: '15px' }}>
-              <div style={{ width: '18px', height: '18px', border: '2px solid var(--border)', borderTopColor: 'var(--orange)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              Loading...
-            </div>
-          )}
-
-          {error && (
-            <div style={{ background: 'var(--status-blocked-bg)', border: '1px solid #e24b4a33', borderRadius: '10px', padding: '14px 18px', color: 'var(--red)', fontSize: '14px', marginBottom: '20px' }}>
-              {error}
-            </div>
-          )}
-
-          {!loading && (
-            <>
               {/* Column headers */}
-              <div style={{
+              <div className="dt-admin-grid dt-admin-grid-budget" style={{
                 display: 'grid', gridTemplateColumns: '1fr 160px 160px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
@@ -340,7 +379,7 @@ export default function Admin() {
               {projects.map(project => {
                 const b = budgets[project.userbackId] || { used: 0, annual: 0 };
                 return (
-                  <div key={project.userbackId} style={{
+                  <div className="dt-admin-grid dt-admin-grid-budget" key={project.userbackId} style={{
                     display: 'grid', gridTemplateColumns: '1fr 160px 160px 1fr',
                     gap: '12px', alignItems: 'center', padding: '12px 16px',
                     background: 'var(--surface)', border: '1px solid var(--border)',
@@ -380,10 +419,15 @@ export default function Admin() {
                 {saved && <span style={{ fontSize: '14px', color: 'var(--green)', fontWeight: '500' }}>✓ Saved</span>}
               </div>
 
+              </>
+            )}
+
+            {!loading && section === 'slack' && (
+              <>
               {/* ── Monday Slack summary ─────────────────────────────── */}
-              <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', margin: '48px 0 8px' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
                 Monday Slack summary
-              </h2>
+              </h1>
               <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '28px' }}>
                 Each person switched on gets a Slack DM before the production meeting with their own open items.
                 Paste their Slack member ID (in Slack: their profile, then the ⋮ menu, then Copy member ID).
@@ -396,7 +440,7 @@ export default function Admin() {
                 </div>
               )}
 
-              <div style={{
+              <div className="dt-admin-grid dt-admin-grid-slack" style={{
                 display: 'grid', gridTemplateColumns: '1fr 180px 80px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
@@ -414,7 +458,7 @@ export default function Admin() {
                 const t = testState[m.userId];
                 const badId = s.slackId && !/^[UW][A-Z0-9]{6,}$/i.test(s.slackId.trim());
                 return (
-                  <div key={m.userId} style={{
+                  <div className="dt-admin-grid dt-admin-grid-slack" key={m.userId} style={{
                     display: 'grid', gridTemplateColumns: '1fr 180px 80px 1fr',
                     gap: '12px', alignItems: 'center', padding: '12px 16px',
                     background: 'var(--surface)', border: '1px solid var(--border)',
@@ -471,10 +515,15 @@ export default function Admin() {
               </div>
 
 
+              </>
+            )}
+
+            {!loading && section === 'birthdays' && (
+              <>
               {/* ── Team birthdays ─────────────────────────────────── */}
-              <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', margin: '48px 0 8px' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
                 Team birthdays
-              </h2>
+              </h1>
               <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '20px' }}>
                 Month and day only. For the week before, everyone else sees a countdown in the header and gets a heads-up in their Monday DM. The birthday person sees nothing until the day, when Bruno throws a party.
               </p>
@@ -506,10 +555,15 @@ export default function Admin() {
                 {bdayMsg && <span style={{ fontSize: '14px', color: bdayMsg.ok ? 'var(--green)' : 'var(--red)', fontWeight: '500' }}>{bdayMsg.text}</span>}
               </div>
 
+              </>
+            )}
+
+            {!loading && section === 'alerts' && (
+              <>
               {/* ── Userback API alerts ─────────────────────────────── */}
-              <h2 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text)', margin: '48px 0 8px' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
                 Userback API alerts
-              </h2>
+              </h1>
               <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '20px' }}>
                 The dashboard checks the Userback API once a day. If it fails two days running, a message goes to your alerts channel, and another when it recovers.
               </p>
@@ -546,9 +600,10 @@ export default function Admin() {
                   </span>
                 )}
               </div>
-            </>
-          )}
-        </main>
+              </>
+            )}
+          </main>
+        </div>
       </div>
     </>
   );
