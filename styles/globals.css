@@ -475,3 +475,34 @@ html[data-arcade="on"] body::after {
   .dt-admin-grid-budget > :nth-child(2), .dt-admin-grid-budget > :nth-child(3) { text-align: left !important; }
   .dt-admin-grid-slack > :nth-child(3) { text-align: left !important; }
 }
+
+/* Monthly report */
+.dt-report h2 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+.dt-report h3 { font-size: 15px; font-weight: 700; margin: 16px 0 6px; }
+
+/* Ticket search */
+.dt-search { position: relative; display: flex; align-items: center; }
+.dt-search input {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; color: var(--text);
+  font-size: 14px; padding: 7px 28px 7px 30px; width: 220px; outline: none;
+}
+.dt-search input:focus { border-color: var(--orange); }
+.dt-search svg { position: absolute; left: 9px; color: var(--muted); pointer-events: none; }
+.dt-search kbd {
+  position: absolute; right: 8px; font-family: var(--mono); font-size: 11px; color: var(--muted);
+  border: 1px solid var(--border2); border-radius: 4px; padding: 0 5px; pointer-events: none;
+}
+.dt-search mark { background: none; }
+@media (max-width: 768px) { .dt-search input { width: 100%; } .dt-search { flex: 1; min-width: 160px; } .dt-search kbd { display: none; } }
+.dt-report-btn {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 6px; color: var(--text);
+  font-size: 13px; font-weight: 500; padding: 5px 10px; white-space: nowrap;
+}
+.dt-report-btn:hover { border-color: var(--orange); }
+.dt-report-link { background: none; border: none; color: var(--orange); font-size: 13px; font-weight: 500; padding: 2px 0; }
+.dt-report-link:hover { text-decoration: underline; }
+
+/* On wider screens the filter row wraps instead of hiding controls off the right edge */
+@media (min-width: 769px) {
+  .dt-status-strip { flex-wrap: wrap; overflow-x: visible; row-gap: 10px; }
+}

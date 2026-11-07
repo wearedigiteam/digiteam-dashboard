@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { getUser, isAdmin } from '../lib/auth';
 import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
 import NudgeDraft from '../components/NudgeDraft';
+import MonthlyReport from '../components/MonthlyReport';
 import { tabTitle, shorten, useTabTitleOverride, useTabTitleTop } from '../components/tabTitle';
 import { getSeason, isSnowing, fossilEra, brunoReply, showToast, useKonami, claimEgg, isFridayAfternoon,
   isProgrammersDay, isGroundhogDay, isAprilFools, isWrappedSeason, isLateNight, birthdayStatus } from '../components/eggs';
@@ -608,7 +609,7 @@ function UnassignedPanel({ projects }) {
 }
 
 // ── Project card ─────────────────────────────────────────────────────────────
-function ProjectCard({ project }) {
+function ProjectCard({ project, onReport }) {
   const [expanded, setExpanded] = useState(true);
   const d = project.data;
   const allActive = [...(d?.open || []), ...(d?.inProgress || []), ...(d?.onHold || [])];
@@ -645,6 +646,11 @@ function ProjectCard({ project }) {
       </button>
       {expanded && d && (
         <div style={{ padding: '12px 16px' }}>
+          {onReport && !d.error && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+              <button className="dt-report-link" onClick={() => onReport({ name: project.name, userbackId: project.userbackId })}>📄 Monthly report</button>
+            </div>
+          )}
           {d.error ? (
             <div style={{ fontSize: '14px', color: 'var(--red)', fontFamily: 'var(--mono)' }}>Error: {d.error}</div>
           ) : (d.total === 0 && (!d.resolvedThisWeek || d.resolvedThisWeek.length === 0)) ? (
@@ -845,6 +851,20 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const [assigneeFilter, setAssigneeState] = useState('all');
   const [projectFilter, setProjectState]   = useState('all');
   const [viewMode, setViewModeState]       = useState('cards');
+  const [search, setSearch]                = useState('');
+  const searchRef = useRef(null);
+  const [reportFor, setReportFor]          = useState(null); // { name, userbackId }
+  const closeReport = useCallback(() => setReportFor(null), []);
+
+  // "/" jumps to search (unless you're already typing somewhere)
+  useEffect(() => {
+    const onKey = e => {
+      const typing = /input|textarea|select/i.test(e.target.tagName) || e.target.isContentEditable;
+      if (e.key === '/' && !typing) { e.preventDefault(); searchRef.current?.focus(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // AI assistant
   const [aiOpen, setAiOpen]         = useState(false);
@@ -931,6 +951,12 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   }
 
   async function sendToAI(prompt) {
+    const reportAsk = prompt.match(/(?:monthly )?(?:status )?report (?:for|on) (.+?)\??$/i);
+    if (reportAsk) {
+      const want = reportAsk[1].trim().toLowerCase();
+      const p = (data?.projects || []).find(x => x.name.toLowerCase() === want) || (data?.projects || []).find(x => x.name.toLowerCase().includes(want));
+      if (p) { setAiError(null); setAiReply(`<p>Pulling together the monthly report for ${p.name}…</p>`); setReportFor({ name: p.name, userbackId: p.userbackId }); return; }
+    }
     const canned = brunoReply(prompt, { birthdayToday: birthdays.today[0] || null });
     if (canned) {
       setAiError(null);
@@ -1031,9 +1057,25 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const projectNames = (data?.projects || []).map(p => p.name).sort();
 
   // Project + Team narrow everything; the status buttons then narrow the list
+  // ── Ticket search: words in the title or description, or a ticket number ──
+  function filterBySearch(project, q) {
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return project;
+    const d = project.data;
+    if (!d) return null;
+    const hay = t => `${t.title || ''} ${t.description || ''} ${t.id || ''} ${project.name}`.toLowerCase();
+    const match = list => (list || []).filter(t => words.every(w => hay(t).includes(w)));
+    const open = match(d.open), inProgress = match(d.inProgress), onHold = match(d.onHold), resolvedThisWeek = match(d.resolvedThisWeek);
+    const total = open.length + inProgress.length + onHold.length;
+    if (total + resolvedThisWeek.length === 0) return null;
+    return { ...project, totalActive: total, data: { ...d, open, inProgress, onHold, resolvedThisWeek, total } };
+  }
+
   const scopedProjects = (data?.projects || [])
     .filter(p => projectFilter === 'all' || p.name === projectFilter)
     .map(p => filterByAssignee(p, assigneeFilter))
+    .filter(Boolean)
+    .map(p => filterBySearch(p, search))
     .filter(Boolean);
 
   const allTickets = data ? getAllTickets(scopedProjects) : null;
@@ -1054,7 +1096,8 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
 
   // Easter egg: show a GIF when the Project/Team selection has no active tickets
   // (On Hold, In Progress and Open all 0). Resolved tickets don't count.
-  const noResults = Boolean(data) && !loading && allTickets && allTickets.all.length === 0;
+  // Searching never triggers the GIF: a typo shouldn't set off an easter egg
+  const noResults = Boolean(data) && !loading && allTickets && allTickets.all.length === 0 && !search.trim();
   const [emptyEgg, setEmptyEgg] = useState(false);
   const hideEmptyEgg = useCallback(() => setEmptyEgg(false), []);
   const [trophy, setTrophy] = useState(false);
@@ -1201,6 +1244,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
           {wrappedOpen && <WrappedOverlay onClose={closeWrapped} />}
           {myParty && <MyBirthdayOverlay name={myFirstName} onClose={() => setMyParty(false)} />}
           <ToastHost />
+          {reportFor && <MonthlyReport project={reportFor} onClose={closeReport} />}
           <div className="dt-page-title" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h1>Userback overview</h1>
@@ -1296,8 +1340,24 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                     {projectFilter !== 'all' && (
                       <button onClick={() => setProjectFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
                     )}
+                    {projectFilter !== 'all' && (() => {
+                      const p = (data?.projects || []).find(x => x.name === projectFilter);
+                      return p ? (
+                        <button onClick={() => setReportFor({ name: p.name, userbackId: p.userbackId })} className="dt-report-btn">📄 Monthly report</button>
+                      ) : null;
+                    })()}
                   </div>
                 )}
+
+                {/* Ticket search */}
+                <div className="dt-search">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                  <input ref={searchRef} type="search" value={search} placeholder="Search tickets"
+                    aria-label="Search tickets by title, description or number"
+                    onChange={e => setSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Escape') { setSearch(''); e.currentTarget.blur(); } }} />
+                  {!search && <kbd aria-hidden="true">/</kbd>}
+                </div>
 
                 {/* Team filter */}
                 {teamMembers.length > 0 && (
@@ -1441,10 +1501,10 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
 
                   {filteredProjects.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px', color: 'var(--muted)', fontSize: '16px', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                      No tickets match this filter
+                      {search.trim() ? `No tickets match “${search.trim()}”` : 'No tickets match this filter'}
                     </div>
                   ) : (
-                    filteredProjects.map(project => <ProjectCard key={project.name} project={project} />)
+                    filteredProjects.map(project => <ProjectCard key={project.name} project={project} onReport={setReportFor} />)
                   )}
                 </>
               )}

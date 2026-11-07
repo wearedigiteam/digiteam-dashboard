@@ -44,3 +44,8 @@ The dashboard serves a cached copy of the Userback data (in KV) so it opens inst
 ### Easter eggs
 
 Seasonal and hidden extras live in `components/eggs.js` (dates, Bruno's canned replies) and `components/EggOverlays.js`. Team birthdays are entered on the Admin tab and stored in KV, never in this repo. Once-per-person eggs are tracked by `/api/eggs/claim`.
+
+### Monthly report and search
+
+- Monthly client status report: `/api/report` (built in `lib/report.js`), opened from a project card, the Project filter, or by asking Bruno for "monthly report for CDA". Client-facing: no assignees, every ticket linked.
+- Ticket search box in the filter row; press `/` to jump to it.
