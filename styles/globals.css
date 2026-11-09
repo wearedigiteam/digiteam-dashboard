@@ -138,7 +138,7 @@ input, select, textarea {
 }
 .dt-header-brand-text { font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
 .dt-main { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
-.dt-page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.dt-page-title { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; row-gap: 10px; }
 .dt-page-title h1 { font-size: 24px; font-weight: 600; color: var(--text); }
 
 .dt-status-strip {
@@ -150,12 +150,44 @@ input, select, textarea {
 }
 .dt-status-strip::-webkit-scrollbar { display: none; }
 .dt-status-btn {
-  border-radius: 10px; padding: 10px 14px;
-  cursor: pointer; min-width: 80px; text-align: left;
+  display: flex; align-items: baseline; gap: 8px;
+  border-radius: 8px; padding: 9px 14px;
+  cursor: pointer; text-align: left;
   flex-shrink: 0; border: 1px solid var(--border);
 }
-.dt-status-num { font-size: 20px; font-weight: 700; line-height: 1; }
-.dt-status-label { font-size: 11px; margin-top: 3px; font-weight: 500; white-space: nowrap; }
+.dt-status-num { font-size: 19px; font-weight: 700; line-height: 1; }
+.dt-status-label { font-size: 13px; font-weight: 500; white-space: nowrap; }
+
+/* Filters get their own row so nothing wraps awkwardly */
+.dt-filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.dt-filter-row .dt-search { flex: 1 1 220px; min-width: 180px; }
+.dt-filter-row .dt-search input { width: 100%; }
+
+/* Title row: updated time and the team goal pill */
+.dt-updated { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.dt-goal-wrap { position: relative; margin-left: auto; }
+.dt-goal-pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer; color: var(--text); font-size: 14px; white-space: nowrap;
+}
+.dt-goal-pill:hover, .dt-goal-pill[aria-expanded="true"] { border-color: var(--orange); }
+.dt-goal-pill:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.dt-goal-label { font-weight: 600; }
+.dt-goal-bar { display: block; width: 140px; height: 8px; border-radius: 4px; background: var(--surface2); overflow: hidden; }
+.dt-goal-bar > span { display: block; height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.dt-goal-num span { color: var(--muted); }
+.dt-goal-extra { font-size: 12px; color: var(--muted); }
+.dt-goal-caret { color: var(--orange); font-size: 13px; }
+.dt-goal-pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+  width: 440px; max-width: calc(100vw - 32px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 12px 32px var(--shadow); padding: 16px 18px;
+}
+.dt-celebrate-layer { position: fixed; top: 0; left: 0; right: 0; height: 240px; pointer-events: none; z-index: 1000; }
+.dt-celebrate-layer .dt-reward-toast { top: 72px; }
+.dt-arcade-pill { margin: 0; border: none; border-radius: 999px; padding: 8px 14px; font-size: 10px; flex-wrap: nowrap; cursor: pointer; }
 
 .dt-assignee-select {
   background: var(--surface); border: 1px solid var(--border2);
@@ -188,9 +220,14 @@ input, select, textarea {
   .dt-main { padding: 16px 12px; }
   .dt-page-title h1 { font-size: 20px; }
 
-  .dt-status-btn { min-width: 65px; padding: 8px 10px; }
-  .dt-status-num { font-size: 18px; }
-  .dt-status-label { font-size: 10px; }
+  .dt-status-btn { padding: 7px 10px; gap: 6px; }
+  .dt-status-num { font-size: 16px; }
+  .dt-status-label { font-size: 12px; }
+  .dt-goal-wrap { margin-left: 0; width: 100%; }
+  .dt-goal-pill { width: 100%; justify-content: space-between; }
+  .dt-goal-bar { flex: 1; width: auto; }
+  .dt-goal-pop { left: 0; right: auto; }
+  .dt-updated { width: 100%; order: 3; }
 
   .dt-card-header { flex-wrap: wrap; padding: 12px 14px; gap: 8px; }
   .dt-card-meta { width: 100%; justify-content: flex-start; }

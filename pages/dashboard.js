@@ -1247,19 +1247,18 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
           {myParty && <MyBirthdayOverlay name={myFirstName} onClose={() => setMyParty(false)} />}
           <ToastHost />
           {reportFor && <MonthlyReport project={reportFor} onClose={closeReport} />}
-          <div className="dt-page-title" style={{ justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <h1>Userback overview</h1>
-              {data && !loading && <span style={{ fontSize: '15px', color: 'var(--muted)' }}>{data.projects.length} projects</span>}
-            </div>
+          <div className="dt-page-title">
+            <h1>Userback overview</h1>
+            {data && !loading && <span style={{ fontSize: '15px', color: 'var(--muted)' }}>{data.projects.length} projects</span>}
             {lastFetch && !loading && (
-              <span style={{ fontSize: '13px', color: refreshError ? 'var(--red)' : 'var(--muted)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}
+              <span className="dt-updated" style={{ color: refreshError ? 'var(--red)' : 'var(--muted)' }}
                 title={refreshError || undefined}>
                 {updating ? 'Updating from Userback…'
                   : refreshError ? `Couldn’t refresh. Showing ${lastFetch.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                   : `Updated ${lastFetch.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
               </span>
             )}
+            {data && <TeamScoreboard refreshKey={lastFetch?.getTime()} />}
           </div>
 
           {loading && !data && (
@@ -1280,31 +1279,57 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
               <button onClick={() => setFools(false)}>Happy April Fools’</button>
             </div>
           )}
-          {data && <TeamScoreboard refreshKey={lastFetch?.getTime()} />}
-
           {data && allTickets && (
             <>
-              {/* ── Ticket-level filter strip ── */}
-              <div className="dt-status-strip">
-                {Object.entries(FILTER_CONFIG).map(([key, cfg]) => {
-                  const count = key === 'all'
-                    ? allTickets.all.length
-                    : (allTickets[key]?.length || 0);
-                  const isActive = filter === key;
-                  return (
-                    <button key={key} className="dt-status-btn" onClick={() => setFilter(isActive && key !== 'all' ? 'all' : key)} style={{
-                      background: isActive ? cfg.bg : 'var(--surface)',
-                      borderColor: isActive ? cfg.color : 'var(--border)',
-                      borderLeft: key !== 'all' ? `4px solid ${cfg.color}` : undefined,
-                      opacity: count === 0 && key !== 'all' ? 0.5 : 1,
-                    }}>
-                      <div className="dt-status-num" style={{ color: isActive && key === 'all' ? 'var(--ink-contrast)' : cfg.color }}>{count}</div>
-                      <div className="dt-status-label" style={{ color: isActive && key === 'all' ? 'var(--ink-contrast)' : (isActive ? cfg.textActive : 'var(--muted)'), opacity: isActive && key === 'all' ? 0.7 : 1 }}>{cfg.label}</div>
-                    </button>
-                  );
-                })}
+              {/* ── Filters ── */}
+              <div className="dt-filter-row">
+                {/* Project filter */}
+                {projectNames.length > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+                  }}>
+                    <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Project:</label>
+                    <select className="dt-assignee-select" value={projectFilter} onChange={e => setProjectFilter(e.target.value)} style={{ minWidth: '150px' }}>
+                      <option value="all">All projects</option>
+                      {projectNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                    {projectFilter !== 'all' && (
+                      <button onClick={() => setProjectFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
+                    )}
+                    {projectFilter !== 'all' && (() => {
+                      const p = (data?.projects || []).find(x => x.name === projectFilter);
+                      return p ? (
+                        <button onClick={() => setReportFor({ name: p.name, userbackId: p.userbackId })} className="dt-report-btn">📄 Monthly report</button>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
 
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}><FilterLegend /></div>
+                {/* Team filter */}
+                {teamMembers.length > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+                  }}>
+                    <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Team:</label>
+                    <select className="dt-assignee-select" value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={{ minWidth: '150px' }}>
+                      <option value="all">Everyone</option>
+                      <option value="unassigned">Unassigned</option>
+                      {teamMembers.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                    {assigneeFilter !== 'all' && (
+                      <button onClick={() => setAssigneeFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
+                    )}
+                  </div>
+                )}
+                {/* Ticket search */}
+                <div className="dt-search">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                  <input ref={searchRef} type="search" value={search} placeholder="Search tickets"
+                    aria-label="Search tickets by title, description or number"
+                    onChange={e => setSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Escape') { setSearch(''); e.currentTarget.blur(); } }} />
+                  {!search && <kbd aria-hidden="true">/</kbd>}
+                </div>
 
                 {/* View toggle */}
                 <div style={{
@@ -1328,56 +1353,29 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                   }} title="Table view">▤</button>
                 </div>
 
-                {/* Project filter */}
-                {projectNames.length > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: '4px',
-                    paddingLeft: '12px', borderLeft: '1px solid var(--border)',
-                  }}>
-                    <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Project:</label>
-                    <select className="dt-assignee-select" value={projectFilter} onChange={e => setProjectFilter(e.target.value)} style={{ minWidth: '150px' }}>
-                      <option value="all">All projects</option>
-                      {projectNames.map(name => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                    {projectFilter !== 'all' && (
-                      <button onClick={() => setProjectFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
-                    )}
-                    {projectFilter !== 'all' && (() => {
-                      const p = (data?.projects || []).find(x => x.name === projectFilter);
-                      return p ? (
-                        <button onClick={() => setReportFor({ name: p.name, userbackId: p.userbackId })} className="dt-report-btn">📄 Monthly report</button>
-                      ) : null;
-                    })()}
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}><FilterLegend /></div>
+              </div>
 
-                {/* Ticket search */}
-                <div className="dt-search">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-                  <input ref={searchRef} type="search" value={search} placeholder="Search tickets"
-                    aria-label="Search tickets by title, description or number"
-                    onChange={e => setSearch(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Escape') { setSearch(''); e.currentTarget.blur(); } }} />
-                  {!search && <kbd aria-hidden="true">/</kbd>}
-                </div>
+              {/* ── Status chips ── */}
+              <div className="dt-status-strip">
+                {Object.entries(FILTER_CONFIG).map(([key, cfg]) => {
+                  const count = key === 'all'
+                    ? allTickets.all.length
+                    : (allTickets[key]?.length || 0);
+                  const isActive = filter === key;
+                  return (
+                    <button key={key} className="dt-status-btn" onClick={() => setFilter(isActive && key !== 'all' ? 'all' : key)} style={{
+                      background: isActive ? cfg.bg : 'var(--surface)',
+                      borderColor: isActive ? cfg.color : 'var(--border)',
+                      borderLeft: key !== 'all' ? `4px solid ${cfg.color}` : undefined,
+                      opacity: count === 0 && key !== 'all' ? 0.5 : 1,
+                    }}>
+                      <div className="dt-status-num" style={{ color: isActive && key === 'all' ? 'var(--ink-contrast)' : cfg.color }}>{count}</div>
+                      <div className="dt-status-label" style={{ color: isActive && key === 'all' ? 'var(--ink-contrast)' : (isActive ? cfg.textActive : 'var(--muted)'), opacity: isActive && key === 'all' ? 0.7 : 1 }}>{cfg.label}</div>
+                    </button>
+                  );
+                })}
 
-                {/* Team filter */}
-                {teamMembers.length > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
-                    paddingLeft: '12px', borderLeft: '1px solid var(--border)',
-                  }}>
-                    <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Team:</label>
-                    <select className="dt-assignee-select" value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)} style={{ minWidth: '150px' }}>
-                      <option value="all">Everyone</option>
-                      <option value="unassigned">Unassigned</option>
-                      {teamMembers.map(name => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                    {assigneeFilter !== 'all' && (
-                      <button onClick={() => setAssigneeFilter('all')} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)', fontSize: '12px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✕</button>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* ── Bruno (AI assistant) ── */}
