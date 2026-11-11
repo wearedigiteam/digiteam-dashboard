@@ -377,6 +377,42 @@ function SolveExpander({ solve }) {
 // ── Ticket row ───────────────────────────────────────────────────────────────
 const PREVIEW_COUNT = 3;
 
+// ── Userback ID: click to copy the bare number (for prompts, search, the Userback tools) ──
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (_) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (_) { return false; }
+}
+
+function CopyId({ id }) {
+  const [state, setState] = useState(null); // 'copied' | 'failed' | null
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  if (id === undefined || id === null || id === '') return null;
+  const text = String(id);
+  async function handle(e) {
+    e.preventDefault(); e.stopPropagation();
+    const ok = await copyText(text);
+    setState(ok ? 'copied' : 'failed');
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setState(null), 1500);
+  }
+  return (
+    <button type="button" className="dt-copy-id" data-state={state || undefined} onClick={handle}
+      title="Copy Userback ID" aria-label={`Copy Userback ID ${text}`}>
+      <span className="dt-copy-id-num">#{text}</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></svg>
+      <span className="dt-copy-id-tip" role="status" aria-live="polite">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Couldn’t copy' : ''}</span>
+    </button>
+  );
+}
+
 function TicketRow({ item, showProject, projectName }) {
   const lastModified = item.updatedAt || item.createdAt;
   const dateLabel = formatDate(lastModified);
@@ -399,19 +435,22 @@ function TicketRow({ item, showProject, projectName }) {
         )}
 
         <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="dt-title-line">
           {item.url ? (
             <a href={item.url} target="_blank" rel="noreferrer" style={{
               fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              textDecoration: 'none', display: 'block',
+              textDecoration: 'none', display: 'block', minWidth: 0,
             }} title={item.title}><FossilBadge item={item} />{item.title}</a>
           ) : (
             <span style={{
               fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              display: 'block',
+              display: 'block', minWidth: 0,
             }} title={item.title}><FossilBadge item={item} />{item.title}</span>
           )}
+            <CopyId id={item.id} />
+          </div>
           {item.description && (
             <div style={{
               fontSize: '13px', color: 'var(--muted)', lineHeight: '1.4', marginTop: '2px',
@@ -702,6 +741,7 @@ function TicketTable({ projects }) {
     switch (sortCol) {
       case 'project':  cmp = (a._projectName || '').localeCompare(b._projectName || ''); break;
       case 'title':    cmp = (a.title || '').localeCompare(b.title || ''); break;
+      case 'id':       cmp = (Number(a.id) || 0) - (Number(b.id) || 0); break;
       case 'assignee': cmp = (a.assignee || 'zzz').localeCompare(b.assignee || 'zzz'); break;
       case 'workflow': cmp = (a.workflowName || '').localeCompare(b.workflowName || ''); break;
       case 'priority': cmp = (b.priorityLevel || 0) - (a.priorityLevel || 0); break;
@@ -747,6 +787,7 @@ function TicketTable({ projects }) {
               <th style={{ ...thStyle('_'), width: '90px', cursor: 'default' }}></th>
               <th style={thStyle('project')} onClick={() => handleSort('project')}>Project{arrow('project')}</th>
               <th style={thStyle('title')} onClick={() => handleSort('title')}>Title{arrow('title')}</th>
+              <th style={thStyle('id')} onClick={() => handleSort('id')}>ID{arrow('id')}</th>
               <th style={thStyle('assignee')} onClick={() => handleSort('assignee')}>Assignee{arrow('assignee')}</th>
               <th style={thStyle('workflow')} onClick={() => handleSort('workflow')}>Status{arrow('workflow')}</th>
               <th style={thStyle('priority')} onClick={() => handleSort('priority')}>Priority{arrow('priority')}</th>
@@ -817,6 +858,7 @@ function TableRow({ item, index }) {
             }} title={item.description}>{item.description}</div>
           )}
         </td>
+        <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}><CopyId id={item.id} /></td>
         <td style={{ padding: '6px 10px', fontSize: '13px', color: assigneeLabel ? 'var(--text2)' : 'var(--muted)', whiteSpace: 'nowrap' }}>{assigneeLabel || '—'}</td>
         <td style={{ padding: '6px 10px' }}><WorkflowBadge name={item.workflowName} color={item.workflowColor} /></td>
         <td style={{ padding: '6px 10px' }}><PriorityBadge priority={item.priority} color={item.priorityColor} /></td>
@@ -833,7 +875,7 @@ function TableRow({ item, index }) {
         <td style={{ padding: '6px 8px' }}><SolveButton solve={solve} /></td>
       </tr>
       {solve.open && (
-        <tr><td colSpan={9} style={{ padding: '0 10px 12px', borderBottom: '1px solid var(--border)' }}>
+        <tr><td colSpan={10} style={{ padding: '0 10px 12px', borderBottom: '1px solid var(--border)' }}>
           <SolveExpander solve={solve} />
         </td></tr>
       )}
