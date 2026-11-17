@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getUser, isAdmin } from '../lib/auth';
-import { isReviewTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
+import { isReviewTicket, isPublishTicket, isAgingTicket, isWaitingOnClient, WAITING_DAYS, isStaleUnassigned, daysSinceCreated, UNASSIGNED_DAYS } from '../lib/statuses';
 import NudgeDraft from '../components/NudgeDraft';
 import MonthlyReport from '../components/MonthlyReport';
 import { tabTitle, shorten, useTabTitleOverride, useTabTitleTop } from '../components/tabTitle';
@@ -118,6 +118,7 @@ const FILTER_CONFIG = {
   inprogress: { label: 'In Progress', color: 'var(--status-inflight-dot)', bg: 'var(--status-inflight-bg)',   textActive: 'var(--status-inflight-text)' },
   open:       { label: 'Open',        color: 'var(--muted)',               bg: 'var(--surface2)',             textActive: 'var(--text)' },
   forreview:  { label: 'For Review',  color: '#8b5cf6',                    bg: 'var(--review-bg)',            textActive: '#8b5cf6' },
+  publish:    { label: 'Needs Publish', color: 'var(--publish)',           bg: 'var(--publish-bg)',           textActive: 'var(--publish)' },
   aging:      { label: 'Aging 30+',   color: '#e07020',                    bg: 'var(--aging-bg)',            textActive: '#e07020' },
   resolved:   { label: 'Resolved',    color: 'var(--green)',               bg: 'var(--status-active-bg)',     textActive: 'var(--green)' },
 };
@@ -218,7 +219,8 @@ function FilterLegend() {
                     {key === 'inprogress' && 'Actively being worked on'}
                     {key === 'open' && 'Logged but not yet started'}
                     {key === 'forreview' && `With the client: For Review, Under Review or Please Review. ${WAITING_DAYS}+ days shows under Waiting on client`}
-                    {key === 'aging' && 'Team tickets not updated in 30+ days. Tickets in review are left out'}
+                    {key === 'publish' && 'Done and waiting to go live. Earns points like For Review'}
+                    {key === 'aging' && 'Team tickets not updated in 30+ days. Tickets in review or waiting to publish are left out'}
                     {key === 'resolved' && 'Closed within the last 7 days'}
                   </div>
                 </div>
@@ -1037,7 +1039,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
 
   // ── Ticket-level counts, based on the current Project + Team selection ──
   function getAllTickets(projects) {
-    const tickets = { onhold: [], inprogress: [], open: [], forreview: [], aging: [], resolved: [], all: [] };
+    const tickets = { onhold: [], inprogress: [], open: [], forreview: [], publish: [], aging: [], resolved: [], all: [] };
     for (const p of projects) {
       const d = p.data;
       if (!d) continue;
@@ -1048,6 +1050,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
       for (const t of (d.resolvedThisWeek || []))  { const tagged = tag(t); tickets.resolved.push(tagged); }
     }
     tickets.forreview = tickets.all.filter(isForReview);
+    tickets.publish   = tickets.all.filter(isPublishTicket);
     tickets.aging     = tickets.all.filter(isAgingTicket);
     return tickets;
   }
@@ -1084,8 +1087,8 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
     if (statusFilter === 'inprogress') { open = []; onHold = []; resolvedThisWeek = []; }
     if (statusFilter === 'open')       { inProgress = []; onHold = []; resolvedThisWeek = []; }
     if (statusFilter === 'resolved')   { open = []; inProgress = []; onHold = []; }
-    if (statusFilter === 'aging' || statusFilter === 'forreview') {
-      const match = statusFilter === 'aging' ? isAgingTicket : isForReview;
+    if (statusFilter === 'aging' || statusFilter === 'forreview' || statusFilter === 'publish') {
+      const match = statusFilter === 'aging' ? isAgingTicket : statusFilter === 'publish' ? isPublishTicket : isForReview;
       open = open.filter(match);
       inProgress = inProgress.filter(match);
       onHold = onHold.filter(match);

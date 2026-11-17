@@ -58,6 +58,8 @@
   --ink-contrast: #ffffff;   /* text on --ink */
   --aging-bg:     #fff3e0;
   --review-bg:    #efe9fe;
+  --publish:      #0f8a85;
+  --publish-bg:   #e0f4f2;
   --shadow:       rgba(0,0,0,0.12);
   --badge-lift:   0%;
   color-scheme: light;
@@ -95,6 +97,8 @@ html[data-theme="dark"] {
   --ink-contrast: #14141f;
   --aging-bg:     #3a2714;
   --review-bg:    #2a2045;
+  --publish:      #3cc8c0;
+  --publish-bg:   #123332;
   --shadow:       rgba(0,0,0,0.5);
   --badge-lift:   45%;
 }
@@ -567,3 +571,5 @@ html[data-arcade="on"] body::after {
   padding: 3px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 20;
 }
 @media (hover: none) { .dt-copy-id svg { opacity: 0.6; } }
+
+.dt-wins-head { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 0 2px; text-transform: uppercase; letter-spacing: 0.4px; }

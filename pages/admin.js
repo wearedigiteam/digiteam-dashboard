@@ -95,6 +95,7 @@ const ADMIN_SECTIONS = [
   { id: 'slack',     label: 'Slack summary' },
   { id: 'birthdays', label: 'Birthdays' },
   { id: 'alerts',    label: 'Alerts' },
+  { id: 'scoring',   label: 'Scoring health' },
 ];
 
 function AdminIcon({ name }) {
@@ -102,7 +103,70 @@ function AdminIcon({ name }) {
   if (name === 'budgets') return <svg {...common}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h3" /></svg>;
   if (name === 'slack') return <svg {...common}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /><path d="M8.5 11h7M8.5 14h4" /></svg>;
   if (name === 'birthdays') return <svg {...common}><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7M5 16c1.5 1 2.5 1 4 0s2.5-1 4 0 2.5 1 4 0" /><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5Z" /></svg>;
+  if (name === 'scoring') return <svg {...common}><path d="M3 12h4l2-5 4 10 2-5h6" /></svg>;
   return <svg {...common}><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>;
+}
+
+const fmtWhen = iso => iso ? new Date(iso).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+function hoursSince(iso) { return iso ? (Date.now() - new Date(iso)) / 3600000 : Infinity; }
+
+function ScoringHealth() {
+  const [h, setH] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    fetch('/api/admin/scoring').then(r => r.json().then(d => (r.ok ? setH(d) : setErr(d.error || `HTTP ${r.status}`))))
+      .catch(e => setErr(e.message));
+  }, []);
+  const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px 20px', marginBottom: '14px' };
+  const label = { fontSize: '13px', fontWeight: '600', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' };
+  const good = <strong style={{ color: 'var(--green)' }}>working</strong>;
+  const stale = <strong style={{ color: 'var(--amber)' }}>quiet</strong>;
+  const bad = <strong style={{ color: 'var(--red)' }}>problem</strong>;
+  if (err) return <p style={{ color: 'var(--red)' }}>Couldn’t load scoring health: {err}</p>;
+  if (!h) return <p style={{ color: 'var(--muted)' }}>Checking…</p>;
+  const wh = h.lastWebhook, ck = h.lastCheck;
+  const whState = !wh ? bad : !wh.ok ? bad : hoursSince(wh.at) > 72 ? stale : good;
+  const ckState = !ck ? bad : hoursSince(ck.at) > 30 ? bad : good;
+  return (
+    <>
+      <div style={card}>
+        <div style={label}>Instant status notices from Userback</div>
+        <div style={{ fontSize: '15px', color: 'var(--text)', lineHeight: 1.6 }}>
+          {whState}{' · '}
+          {wh ? <>last one {fmtWhen(wh.at)}{wh.ok ? <> for “{wh.title || `#${wh.id}`}”{wh.status ? ` (${wh.status})` : ''}: {wh.result === 'award' ? 'points added' : wh.result === 'clawback' ? 'points taken back' : 'no points change'}</> : <>: {wh.error}</>}</> : 'none received yet'}
+        </div>
+        {(!wh || hoursSince(wh.at) > 72) && (
+          <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '6px', lineHeight: 1.5 }}>
+            {wh ? 'Nothing in 3+ days. ' : ''}Check the “Feedback status is changed” webhook in Userback points to /api/webhooks/userback with the secret key. The backup check below still scores everything, just later.
+          </div>
+        )}
+      </div>
+      <div style={card}>
+        <div style={label}>Backup check (every refresh and each morning)</div>
+        <div style={{ fontSize: '15px', color: 'var(--text)', lineHeight: 1.6 }}>
+          {ckState}{' · '}
+          {ck ? <>last ran {fmtWhen(ck.at)}: {ck.checked} tickets checked{ck.baseline ? ', first baseline taken' : `, ${ck.awards} scored, ${ck.clawbacks} taken back`}</> : 'hasn’t run yet'}
+        </div>
+        {h.trackingSince && <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px' }}>Scoring since {fmtWhen(h.trackingSince)}</div>}
+      </div>
+      <div style={card}>
+        <div style={label}>Last 10 scoring events</div>
+        {h.recent.length === 0 ? <p style={{ fontSize: '14px', color: 'var(--muted)' }}>None yet.</p> : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {h.recent.map((e, i) => (
+              <li key={i} style={{ display: 'flex', gap: '10px', alignItems: 'baseline', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '14px' }}>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 600, minWidth: '30px', color: e.points < 0 ? 'var(--red)' : 'var(--green)' }}>{e.points > 0 ? `+${e.points}` : e.points}</span>
+                {e.url ? <a href={e.url} target="_blank" rel="noreferrer" style={{ flex: 1, minWidth: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</a>
+                  : <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>}
+                <span style={{ fontSize: '12px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{e.project}</span>
+                <span style={{ fontSize: '12px', color: 'var(--muted2)', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>{fmtWhen(e.at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  );
 }
 
 export default function Admin() {
@@ -600,6 +664,17 @@ export default function Admin() {
                   </span>
                 )}
               </div>
+              </>
+            )}
+            {!loading && section === 'scoring' && (
+              <>
+              <h1 style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text)', marginBottom: '8px' }}>
+                Scoring health
+              </h1>
+              <p style={{ fontSize: '15px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+                Points come from two places: Userback’s instant notice when a ticket’s status changes, and a backup check that compares every ticket whenever the dashboard refreshes. If either is working, nothing is missed.
+              </p>
+              <ScoringHealth />
               </>
             )}
           </main>

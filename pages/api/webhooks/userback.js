@@ -8,7 +8,7 @@
 
 import crypto from 'crypto';
 import { fetchFeedbackById, fetchAllProjects } from '../../../lib/userback';
-import { scoreSingleTicket, logWebhook } from '../../../lib/scoreboard';
+import { scoreSingleTicket, logWebhook, noteWebhookResult } from '../../../lib/scoreboard';
 
 export const config = { maxDuration: 30 };
 
@@ -42,7 +42,10 @@ export default async function handler(req, res) {
   await logWebhook(body);
 
   const id = findFeedbackId(body);
-  if (!id) return res.status(200).json({ ok: true, skipped: 'No feedback ID in payload' });
+  if (!id) {
+    await noteWebhookResult({ ok: false, error: 'No feedback ID in payload' });
+    return res.status(200).json({ ok: true, skipped: 'No feedback ID in payload' });
+  }
 
   try {
     const item = await fetchFeedbackById(id);
@@ -50,10 +53,12 @@ export default async function handler(req, res) {
       projectNames = Object.fromEntries((await fetchAllProjects()).map(p => [p.id, p.name]));
     }
     const result = await scoreSingleTicket(item, projectNames[item.projectId] || null);
+    await noteWebhookResult({ ok: true, id, title: String(item.title || '').slice(0, 100), status: item.workflowName || null, result: result || 'no change' });
     return res.status(200).json({ ok: true, id, result: result || 'no change' });
   } catch (err) {
     // 200 so Userback doesn't retry endlessly; the daily check will catch it
     console.error('Userback webhook error:', err);
+    await noteWebhookResult({ ok: false, id, error: err.message });
     return res.status(200).json({ ok: false, error: err.message });
   }
 }

@@ -36,6 +36,33 @@ function timeAgo(iso) {
   return `${Math.round(hrs / 24)}d ago`;
 }
 
+function WinList({ items, muted }) {
+  return (
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0, opacity: muted ? 0.75 : 1 }}>
+      {items.map((e, i) => (
+        <li key={i} style={{
+          display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0',
+          borderBottom: '1px solid var(--border)', fontSize: '13px',
+          opacity: e.type === 'clawback' ? 0.65 : 1,
+        }}>
+          <span style={{
+            fontFamily: 'var(--mono)', fontSize: '12px', fontWeight: '600', minWidth: '30px',
+            color: e.type === 'clawback' ? 'var(--red)' : 'var(--green)',
+          }}>{e.points > 0 ? `+${e.points}` : e.points}</span>
+          {e.url
+            ? <a href={e.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</a>
+            : <span style={{ color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>}
+          {e.type === 'clawback' && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>back from review</span>}
+          {e.fossil && e.type !== 'clawback' && <span style={{ fontSize: '11px' }} title="Ticket over a year old">🦴 fossil</span>}
+          {e.aging && !e.fossil && e.type !== 'clawback' && <span style={{ fontSize: '11px', color: '#e07020' }}>30+ days</span>}
+          {e.project && <span style={{ fontSize: '11px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{e.project}</span>}
+          <span style={{ fontSize: '11px', color: 'var(--muted2)', whiteSpace: 'nowrap', fontFamily: 'var(--mono)' }}>{timeAgo(e.at)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function TeamScoreboard({ refreshKey }) {
   const [score, setScore] = useState(null);
   const [open, setOpen] = useState(false);
@@ -135,33 +162,24 @@ export default function TeamScoreboard({ refreshKey }) {
               ))}
             </div>
           )}
-          <h3 style={{ fontSize: '13px', fontWeight: '600', color: 'var(--muted)', margin: '14px 0 2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Recent wins</h3>
-          {score.recent.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '6px 0 0' }}>Nothing yet this week.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {score.recent.slice(0, 8).map((e, i) => (
-                <li key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0',
-                  borderBottom: '1px solid var(--border)', fontSize: '13px',
-                  opacity: e.type === 'clawback' ? 0.65 : 1,
-                }}>
-                  <span style={{
-                    fontFamily: 'var(--mono)', fontSize: '12px', fontWeight: '600', minWidth: '30px',
-                    color: e.type === 'clawback' ? 'var(--red)' : 'var(--green)',
-                  }}>{e.points > 0 ? `+${e.points}` : e.points}</span>
-                  {e.url
-                    ? <a href={e.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</a>
-                    : <span style={{ color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>}
-                  {e.type === 'clawback' && <span style={{ fontSize: '11px', color: 'var(--muted)' }}>back from review</span>}
-                  {e.fossil && e.type !== 'clawback' && <span style={{ fontSize: '11px' }} title="Ticket over a year old">🦴 fossil</span>}
-                  {e.aging && !e.fossil && e.type !== 'clawback' && <span style={{ fontSize: '11px', color: '#e07020' }}>30+ days</span>}
-                  {e.project && <span style={{ fontSize: '11px', color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{e.project}</span>}
-                  <span style={{ fontSize: '11px', color: 'var(--muted2)', whiteSpace: 'nowrap', fontFamily: 'var(--mono)' }}>{timeAgo(e.at)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          {(() => {
+            const thisWeek = score.recent.filter(e => e.week === score.week).slice(0, 8);
+            const earlier = score.recent.filter(e => e.week !== score.week).slice(0, Math.max(3, 8 - thisWeek.length));
+            return (
+              <>
+                <h3 className="dt-wins-head">This week’s wins</h3>
+                {thisWeek.length === 0
+                  ? <p style={{ fontSize: '13px', color: 'var(--muted)', margin: '6px 0 0' }}>Nothing yet this week.</p>
+                  : <WinList items={thisWeek} />}
+                {earlier.length > 0 && (
+                  <>
+                    <h3 className="dt-wins-head">Earlier</h3>
+                    <WinList items={earlier} muted />
+                  </>
+                )}
+              </>
+            );
+          })()}
         </section>
       )}
     </div>
