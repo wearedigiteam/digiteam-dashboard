@@ -1,17 +1,7 @@
 import { Html, Head, Main, NextScript } from 'next/document';
 
-// Runs before the page paints so there's no flash of the wrong theme.
-// Uses the dt_theme cookie if set; otherwise follows the operating system setting.
-const themeScript = `
-(function () {
-  try {
-    var m = document.cookie.match(/(?:^|; )dt_theme=(light|dark)/);
-    var theme = m ? m[1]
-      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.dataset.theme = theme;
-  } catch (e) {}
-})();
-`;
+// Theme script (runs before paint): lib/theme-script.mjs, also allowed by hash in next.config.mjs
+import { themeScript } from '../lib/theme-script.mjs';
 
 export default function Document() {
   return (

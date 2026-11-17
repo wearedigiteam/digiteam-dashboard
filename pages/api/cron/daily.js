@@ -15,7 +15,7 @@ import { presortAll } from '../../../lib/slack-signal';
 async function runScoreCheck(startedAt) {
   const health = await checkUserbackHealth();
   let projects = null;
-  if (health.ok) projects = (await refreshDashboardData()).projects.length;
+  if (health.ok) projects = (await refreshDashboardData({ full: true })).projects.length; // full scan refreshes the saved open tickets
   // Slack tab: sort the last day's messages so channels open instantly. Uses whatever time is left.
   let slack = null;
   try { slack = await presortAll({ deadline: startedAt + 55000 }); }

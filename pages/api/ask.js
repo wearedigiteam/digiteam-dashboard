@@ -1,4 +1,5 @@
 import { getUser } from '../../lib/auth';
+import { safeHtml } from '../../lib/safe-html';
 
 export default async function handler(req, res) {
   if (!(await getUser(req))) {
@@ -98,7 +99,7 @@ ${contextLines.join('\n')}`;
     }
 
     const data = await response.json();
-    const reply = data.content?.map(c => c.text || '').join('\n') || 'No response';
+    const reply = safeHtml(data.content?.map(c => c.text || '').join('\n') || 'No response');
 
     return res.status(200).json({ reply });
   } catch (err) {
