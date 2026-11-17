@@ -1,4 +1,6 @@
-# Digiteam Userback Dashboard
+# Digiteam Dashboard
+
+Userback tickets and Slack channels (work sorted from noise) behind Digiteam Google sign-in.
 
 Automatically loads all non-archived Userback projects and team members.
 

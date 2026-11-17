@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { getUser, isAdmin } from '../lib/auth';
 import ThemeToggle from '../components/ThemeToggle';
+import AppNav from '../components/AppNav';
 
 export async function getServerSideProps({ req, resolvedUrl }) {
   const user = await getUser(req);
@@ -366,22 +367,9 @@ export default function Admin() {
             <DigiteamLogo />
             <span className="dt-header-brand-text">digiteam</span>
           </div>
-          <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
-            <button onClick={() => router.push('/dashboard')} style={{
-              background: 'transparent', color: 'rgba(255,255,255,0.5)',
-              border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px',
-            }}>Dashboard</button>
-            <button style={{
-              background: 'rgba(247,173,57,0.15)', color: '#f7ad39',
-              border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px',
-            }}>Admin</button>
-          </nav>
+          <AppNav active="admin" />
           <div style={{ flex: 1 }} />
           <ThemeToggle />
-          <button className="dt-hide-mobile" onClick={() => router.push('/dashboard')} style={{
-            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-            color: '#fff', borderRadius: '6px', fontSize: '13px', fontWeight: '500', padding: '6px 14px',
-          }}>← Dashboard</button>
         </header>
 
         <div className="dt-admin">

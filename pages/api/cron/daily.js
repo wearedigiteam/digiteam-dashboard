@@ -9,13 +9,18 @@ import { kv } from '@vercel/kv';
 import { runWeeklySlack } from '../../../lib/weekly-slack';
 import { refreshDashboardData } from '../../../lib/dashboard-data';
 import { checkUserbackHealth } from '../../../lib/health';
+import { presortAll } from '../../../lib/slack-signal';
 
 // Health check first; if Userback is fine, refresh the cached data (which also runs the score check)
-async function runScoreCheck() {
+async function runScoreCheck(startedAt) {
   const health = await checkUserbackHealth();
-  if (!health.ok) return { health };
-  const data = await refreshDashboardData();
-  return { health, projects: data.projects.length };
+  let projects = null;
+  if (health.ok) projects = (await refreshDashboardData()).projects.length;
+  // Slack tab: sort the last day's messages so channels open instantly. Uses whatever time is left.
+  let slack = null;
+  try { slack = await presortAll({ deadline: startedAt + 55000 }); }
+  catch (err) { console.error('Slack pre-sort failed:', err); slack = { error: err.message }; }
+  return { health, projects, slack };
 }
 
 export const config = { maxDuration: 60 };
@@ -33,6 +38,7 @@ function torontoParts(date = new Date()) {
 }
 
 export default async function handler(req, res) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorised' });
@@ -46,7 +52,7 @@ export default async function handler(req, res) {
 
   if (!isMonday || now.hour !== sendHour) {
     try {
-      return res.status(200).json({ scoreCheck: await runScoreCheck() });
+      return res.status(200).json({ scoreCheck: await runScoreCheck(startedAt) });
     } catch (err) {
       console.error('Score check failed:', err);
       return res.status(500).json({ error: err.message });

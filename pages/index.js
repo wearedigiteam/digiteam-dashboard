@@ -59,7 +59,7 @@ export default function Login({ next = '/dashboard', error = null }) {
   return (
     <>
       <Head>
-        <title>Sign in | Digiteam</title>
+        <title>Sign in | Digiteam Dashboard</title>
         <meta name="robots" content="noindex,nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -70,7 +70,7 @@ export default function Login({ next = '/dashboard', error = null }) {
               <DigiteamLogo size={44} />
               <span style={{ fontSize: '26px', fontWeight: '700', letterSpacing: '-0.5px', color: 'var(--text)' }}>digiteam</span>
             </div>
-            <div style={{ fontSize: '14px', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>Userback Dashboard</div>
+            <div style={{ fontSize: '14px', color: 'var(--muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>Dashboard</div>
           </div>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '36px' }}>
             <div style={{ fontSize: '14px', color: 'var(--muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', fontWeight: '600' }}>Sign in</div>

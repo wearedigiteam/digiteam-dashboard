@@ -12,6 +12,7 @@ import { ChristmasOverlay, BirthdayOverlay, TrophyOverlay, ToastHost, WrappedOve
 import { BrunoAvatar, BrunoSays } from '../components/Bruno';
 import ThemeToggle, { applyTheme } from '../components/ThemeToggle';
 import { signOut } from 'next-auth/react';
+import AppNav from '../components/AppNav';
 import ThumbPreview from '../components/ThumbPreview';
 import EasterEgg, { EGG_GIFS } from '../components/EasterEgg';
 import TeamScoreboard from '../components/TeamScoreboard';
@@ -1269,15 +1270,12 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
               <button onClick={() => setXmas('countdown')} className="dt-tree" title="…if we’re still doing this by Christmas…" aria-label="Christmas countdown">🎄</button>
             )}
           </div>
-          <nav style={{ display: 'flex', gap: '6px', marginLeft: '24px' }}>
-            <button onClick={() => router.push('/dashboard')} style={{ background: 'rgba(247,173,57,0.15)', color: '#f7ad39', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Dashboard</button>
-            {canAdmin && <button onClick={() => router.push('/admin')} style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', padding: '6px 14px' }}>Admin</button>}
-          </nav>
+          <AppNav active="userback" canAdmin={canAdmin} />
           <div style={{ flex: 1 }} />
           <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <ThemeToggle />
-            {lastFetch && <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--mono)' }}>{lastFetch.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}</span>}
-            <button onClick={() => loadFresh()} disabled={loading || updating} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: loading || updating ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500' }}>{loading || updating ? '⟳ Updating…' : '↺ Refresh'}</button>
+            {lastFetch && <span className="dt-hide-mobile" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--mono)' }}>{lastFetch.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}</span>}
+            <button onClick={() => loadFresh()} disabled={loading || updating} aria-label={loading || updating ? 'Updating' : 'Refresh'} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: loading || updating ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500' }}>{loading || updating ? <>⟳<span className="dt-refresh-label"> Updating…</span></> : <>↺<span className="dt-refresh-label"> Refresh</span></>}</button>
             <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
           </div>
         </header>
