@@ -369,7 +369,7 @@ export default function SlackTab({ canAdmin, workspace }) {
           <div style={{ flex: 1 }} />
           <div className="dt-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <ThemeToggle />
-            <button type="button" onClick={() => signOut({ callbackUrl: '/' })} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
+            <button type="button" className="dt-signout" onClick={() => signOut({ callbackUrl: '/' })} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
           </div>
         </header>
 

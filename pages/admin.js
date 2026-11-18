@@ -415,7 +415,7 @@ export default function Admin() {
           </div>
 
               {/* Column headers */}
-              <div className="dt-admin-grid dt-admin-grid-budget" style={{
+              <div className="dt-admin-grid dt-admin-grid-budget dt-admin-grid-head" style={{
                 display: 'grid', gridTemplateColumns: '1fr 160px 160px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
@@ -441,6 +441,7 @@ export default function Admin() {
                       {project.name}
                     </div>
                     <div>
+                      <span className="dt-mobile-label" aria-hidden="true">Annual budget</span>
                       <CurrencyInput
                         value={b.annual}
                         onChange={v => updateBudget(project.userbackId, 'annual', v)}
@@ -449,6 +450,7 @@ export default function Admin() {
                       />
                     </div>
                     <div>
+                      <span className="dt-mobile-label" aria-hidden="true">Budget used</span>
                       <CurrencyInput
                         value={b.used}
                         onChange={v => updateBudget(project.userbackId, 'used', v)}
@@ -492,7 +494,7 @@ export default function Admin() {
                 </div>
               )}
 
-              <div className="dt-admin-grid dt-admin-grid-slack" style={{
+              <div className="dt-admin-grid dt-admin-grid-slack dt-admin-grid-head" style={{
                 display: 'grid', gridTemplateColumns: '1fr 180px 80px 1fr',
                 gap: '12px', padding: '0 16px 10px',
               }}>
@@ -521,6 +523,7 @@ export default function Admin() {
                       {m.email && <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{m.email}</div>}
                     </div>
                     <div>
+                      <span className="dt-mobile-label" aria-hidden="true">Slack member ID</span>
                       <input
                         type="text"
                         value={s.slackId}
@@ -531,7 +534,8 @@ export default function Admin() {
                           borderColor: badId ? 'var(--red)' : undefined }}
                       />
                     </div>
-                    <div style={{ textAlign: 'center' }}>
+                    <div className="dt-admin-send" style={{ textAlign: 'center' }}>
+                      <span className="dt-mobile-label" aria-hidden="true">Send on Mondays</span>
                       <input
                         type="checkbox"
                         checked={s.enabled}

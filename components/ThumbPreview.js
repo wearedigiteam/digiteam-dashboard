@@ -48,7 +48,7 @@ export default function ThumbPreview({ thumb, full, href, width, height, radius 
 
   return (
     <>
-      <a ref={anchor} href={href || '#'} target="_blank" rel="noreferrer"
+      <a ref={anchor} className="dt-thumb" href={href || '#'} target="_blank" rel="noreferrer"
         onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
         style={{ flexShrink: 0, display: 'block', lineHeight: 0 }}>
         <img src={thumb} alt="Screenshot" style={{

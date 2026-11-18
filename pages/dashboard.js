@@ -205,10 +205,15 @@ function FilterLegend() {
             position: 'fixed', top: pos.top, left: pos.left,
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '20px', width: '380px', maxWidth: 'calc(100vw - 24px)',
+            maxHeight: `calc(100vh - ${pos.top}px - 16px)`, overflowY: 'auto', overscrollBehavior: 'contain',
             boxShadow: '0 8px 30px var(--shadow)', zIndex: 1000,
-          }}>
-            <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)', marginBottom: '14px' }}>
-              Ticket filters
+          }} role="dialog" aria-label="Ticket filters">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text)' }}>Ticket filters</div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close" style={{
+                background: 'none', border: '1px solid var(--border2)', borderRadius: '6px', color: 'var(--muted)',
+                width: '30px', height: '30px', fontSize: '15px', lineHeight: 1, cursor: 'pointer',
+              }}>✕</button>
             </div>
             {Object.entries(FILTER_CONFIG).filter(([k]) => k !== 'all').map(([key, cfg]) => (
               <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '8px 0', borderBottom: key !== 'resolved' ? '1px solid var(--border)' : 'none' }}>
@@ -428,7 +433,7 @@ function TicketRow({ item, showProject, projectName }) {
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
-      <div style={{
+      <div className="dt-ticket-row" style={{
         display: 'flex', alignItems: 'center', gap: '10px',
         padding: '7px 0',
       }}>
@@ -437,20 +442,20 @@ function TicketRow({ item, showProject, projectName }) {
             width="120px" height="75px" />
         )}
 
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="dt-ticket-main" style={{ flex: 1, minWidth: 0 }}>
           <div className="dt-title-line">
           {item.url ? (
             <a href={item.url} target="_blank" rel="noreferrer" style={{
               fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               textDecoration: 'none', display: 'block', minWidth: 0,
-            }} title={item.title}><FossilBadge item={item} />{item.title}</a>
+            }} className="dt-ticket-title" title={item.title}><FossilBadge item={item} />{item.title}</a>
           ) : (
             <span style={{
               fontSize: '16px', fontWeight: '500', color: 'var(--text)', lineHeight: '1.3',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               display: 'block', minWidth: 0,
-            }} title={item.title}><FossilBadge item={item} />{item.title}</span>
+            }} className="dt-ticket-title" title={item.title}><FossilBadge item={item} />{item.title}</span>
           )}
             <CopyId id={item.id} />
           </div>
@@ -462,7 +467,7 @@ function TicketRow({ item, showProject, projectName }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        <div className="dt-ticket-meta" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {showProject && item._projectName && (
             <span style={{ fontSize: '11px', color: 'var(--muted2)', background: 'var(--surface2)', padding: '1px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>{item._projectName}</span>
           )}
@@ -549,7 +554,7 @@ function NeedsAttentionPanel({ projects }) {
   const warning = sorted.filter(t => getAgingLevel(getDaysSince(t.updatedAt || t.createdAt)) === 'warning');
 
   return (
-    <div style={{
+    <div className="dt-panel" style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderLeft: '4px solid #e53935', borderRadius: '10px',
       padding: '20px', marginBottom: '20px',
@@ -586,7 +591,7 @@ function WaitingOnClientPanel({ projects }) {
   const all = byClient.flatMap(c => c.tickets);
 
   return (
-    <div style={{
+    <div className="dt-panel" style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderLeft: '4px solid #8b5cf6', borderRadius: '10px',
       padding: '20px', marginBottom: '20px',
@@ -633,7 +638,7 @@ function UnassignedPanel({ projects }) {
   const oldest = Math.max(...items.map(t => daysSinceCreated(t) || 0));
 
   return (
-    <div style={{
+    <div className="dt-panel" style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
       borderLeft: '4px solid var(--status-inflight-dot)', borderRadius: '10px',
       padding: '20px', marginBottom: '20px',
@@ -898,6 +903,15 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
   const [assigneeFilter, setAssigneeState] = useState('all');
   const [projectFilter, setProjectState]   = useState('all');
   const [viewMode, setViewModeState]       = useState('cards');
+  // The table needs a wide screen; phones always get cards
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
   const [search, setSearch]                = useState('');
   const searchRef = useRef(null);
   const [reportFor, setReportFor]          = useState(null); // { name, userbackId }
@@ -1276,7 +1290,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
             <ThemeToggle />
             {lastFetch && <span className="dt-hide-mobile" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--mono)' }}>{lastFetch.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}</span>}
             <button onClick={() => loadFresh()} disabled={loading || updating} aria-label={loading || updating ? 'Updating' : 'Refresh'} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: loading || updating ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500' }}>{loading || updating ? <>⟳<span className="dt-refresh-label"> Updating…</span></> : <>↺<span className="dt-refresh-label"> Refresh</span></>}</button>
-            <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
+            <button onClick={handleLogout} className="dt-signout" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>Sign out</button>
           </div>
         </header>
 
@@ -1328,7 +1342,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
               <div className="dt-filter-row">
                 {/* Project filter */}
                 {projectNames.length > 0 && (
-                  <div style={{
+                  <div className="dt-filter-group" style={{
                     display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
                   }}>
                     <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Project:</label>
@@ -1350,7 +1364,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
 
                 {/* Team filter */}
                 {teamMembers.length > 0 && (
-                  <div style={{
+                  <div className="dt-filter-group" style={{
                     display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
                   }}>
                     <label style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500', whiteSpace: 'nowrap' }}>Team:</label>
@@ -1374,8 +1388,8 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                   {!search && <kbd aria-hidden="true">/</kbd>}
                 </div>
 
-                {/* View toggle */}
-                <div style={{
+                {/* View toggle (hidden on phones, which always get cards) */}
+                <div className="dt-view-toggle" style={{
                   display: 'flex', alignItems: 'center', flexShrink: 0,
                   background: 'var(--surface2)', borderRadius: '8px', padding: '2px',
                   border: '1px solid var(--border)',
@@ -1532,7 +1546,7 @@ export default function Dashboard({ userEmail = null, canAdmin = true }) {
                 )}
               </div>
 
-              {viewMode === 'table' ? (
+              {viewMode === 'table' && !narrow ? (
                 <TicketTable projects={filteredProjects} />
               ) : (
                 <>
