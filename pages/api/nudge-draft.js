@@ -1,6 +1,7 @@
 // Drafts a short follow-up email to a client about tickets waiting on their review.
 // The person reviews and sends it themselves; nothing is sent from here.
 import { getUser } from '../../lib/auth';
+import { jsonObjects } from '../../lib/json-objects';
 
 const BANNED = 'meticulous, meticulously, intricate, intricately, commendable, delve, delving, ingenious, invaluable, pivotal, potent, compellingly, methodically, excellently, aptly, innovatively';
 
@@ -82,7 +83,8 @@ Return only JSON: {"subject": "...", "opening": "...", "closing": "..."}`;
     if (!r.ok) throw new Error(`Anthropic ${r.status}`);
     const data = await r.json();
     const text = (data.content || []).map(c => c.text || '').join('');
-    const json = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    const json = jsonObjects(text).find(o => o && (o.subject || o.opening || o.closing));
+    if (!json) throw new Error('No usable JSON in reply');
     const w = standardWording(project, clean);
     const subject = proseOr(json.subject, w.subject).slice(0, 150);
     const opening = proseOr(json.opening, w.opening);
