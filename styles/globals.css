@@ -775,3 +775,12 @@ html[data-arcade="on"] body::after {
 .dt-sig-msg.cont:hover .dt-sig-cont-row a.open, .dt-sig-cont-row a.open:focus { opacity: 1; }
 @media (hover: none) { .dt-sig-cont-time { opacity: 0.7; } }
 .dt-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Collapsible digest */
+.dt-sig-digest h2 { margin: 0 0 6px; }
+.dt-sig-digest.collapsed h2 { margin: 0; }
+.dt-sig-digest-toggle { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; padding: 0; font: inherit; font-size: 15px; font-weight: 600; color: var(--text); cursor: pointer; }
+.dt-sig-digest-toggle .chev { color: var(--orange); width: 12px; display: inline-block; }
+.dt-sig-digest-toggle:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+.dt-sig-digest-count { font-size: 12px; font-weight: 500; color: var(--muted); }
+.dt-sig-digest.collapsed { padding-top: 8px !important; padding-bottom: 8px !important; }

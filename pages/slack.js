@@ -93,6 +93,9 @@ export default function SlackTab({ canAdmin, workspace }) {
   const [data, setData] = useState(null);            // { channel, messages, labels, overrides, people, ai }
   const [status, setStatus] = useState({ text: '', err: false });
   const [digest, setDigest] = useState(undefined);   // undefined = not yet, null = writing, [] / [..]
+  // The digest opens by default. Collapsing it is remembered per channel along with what it said;
+  // it stays collapsed until the digest changes (i.e. there's new work or ticket movement to read).
+  const [collapsedSig, setCollapsedSig] = useState(null);
   const [expanded, setExpanded] = useState(() => new Set());
   const [listOpen, setListOpen] = useState(false);
   const token = useRef(0);
@@ -259,6 +262,19 @@ export default function SlackTab({ canAdmin, workspace }) {
     if (data?.labels?.[m.ts]) return data.labels[m.ts];
     return data?.ai === false ? 'w' : 'p';
   }, [data]);
+
+  const digestSig = Array.isArray(digest) ? String(digest.join('\n').split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) : null;
+  const digestKey = current ? `digest:${current.id}:${range}:${strict}` : null;
+  useEffect(() => { setCollapsedSig(digestKey ? prefs.get(digestKey, null) : null); }, [digestKey]);
+  // Collapsed stays collapsed while a fresh digest is being written; once it's back, it opens only if it changed
+  const digestOpen = digestSig ? collapsedSig !== digestSig : !collapsedSig;
+  function toggleDigest() {
+    if (!digestKey) return;
+    const next = digestOpen ? digestSig : null; // collapsing remembers what it said; null = open
+    if (digestOpen && !digestSig) return;       // nothing to remember while it's still being written
+    setCollapsedSig(next);
+    prefs.set(digestKey, next);
+  }
 
   async function flip(m) {
     if (!data) return;
@@ -542,11 +558,18 @@ export default function SlackTab({ canAdmin, workspace }) {
                   </div>
                 )}
                 {digest !== undefined && (
-                  <div className="dt-sig-digest">
-                    <h2>What actually happened</h2>
-                    {digest === null ? <p className="empty">Writing the digest…</p>
+                  <div className={digestOpen ? 'dt-sig-digest' : 'dt-sig-digest collapsed'}>
+                    <h2>
+                      <button type="button" className="dt-sig-digest-toggle" onClick={toggleDigest} aria-expanded={digestOpen}
+                        title={digestOpen ? 'Collapse. It reopens when there’s something new.' : 'Show the digest'}>
+                        <span className="chev" aria-hidden="true">{digestOpen ? '▾' : '▸'}</span>
+                        What actually happened
+                        {!digestOpen && Array.isArray(digest) && digest.length > 0 && <span className="dt-sig-digest-count">{digest.length} point{digest.length === 1 ? '' : 's'}</span>}
+                      </button>
+                    </h2>
+                    {digestOpen && (digest === null ? <p className="empty">Writing the digest…</p>
                       : digest.length ? <ul>{digest.map((b, i) => <li key={i} dangerouslySetInnerHTML={{ __html: mrkdwn(b, people) }} />)}</ul>
-                      : <p className="empty">No work in this window. Just vibes.</p>}
+                      : <p className="empty">No work in this window. Just vibes.</p>)}
                   </div>
                 )}
               </>
