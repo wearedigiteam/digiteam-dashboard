@@ -98,6 +98,8 @@ export default function SlackTab({ canAdmin, workspace }) {
   const [collapsedSig, setCollapsedSig] = useState(null);
   const [expanded, setExpanded] = useState(() => new Set());
   const [listOpen, setListOpen] = useState(false);
+  const [showQuiet, setShowQuiet] = useState(false);
+  useEffect(() => { setShowQuiet(prefs.get('showQuiet', false)); }, []);
   const token = useRef(0);
   // Messages scroll in their own panel on wider screens (the page scrolls on phones). Opening a
   // channel jumps to the newest message at the bottom and stays pinned there while the digest and
@@ -187,8 +189,25 @@ export default function SlackTab({ canAdmin, workspace }) {
       setChannels(d.channels || []);
       if (d.error) setListError(d.error);
       return d.channels || [];
-    } catch (err) { setListError(err.message); setChannels([]); return []; }
+    } catch (err) { setListError(err.message); setChannels(prev => prev || []); return []; }
   }, []);
+
+  // Mark a channel seen up to its newest loaded message, and clear its unread highlight
+  const markSeen = useCallback(async (cid, messages) => {
+    let ts = null;
+    for (const m of messages || []) for (const x of [m, ...(m.thread || [])]) if (!ts || parseFloat(x.ts) > parseFloat(ts)) ts = x.ts;
+    setChannels(prev => prev && prev.map(c => (c.id === cid ? { ...c, unread: false } : c)));
+    if (!ts) return;
+    try { await fetch('/api/slack/seen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: cid, ts }) }); } catch { /* next visit catches up */ }
+  }, []);
+
+  // Keep the list current: every 2 minutes while the tab is visible, and when you come back to it
+  useEffect(() => {
+    const tick = () => { if (document.visibilityState === 'visible') loadChannels(); };
+    const id = setInterval(tick, 2 * 60 * 1000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', tick); };
+  }, [loadChannels]);
 
   const load = useCallback(async (ch, { fresh = false, r = range, s = strict } = {}) => {
     const my = ++token.current;
@@ -207,6 +226,7 @@ export default function SlackTab({ canAdmin, workspace }) {
       if (my !== token.current) return;
       if (!res.ok) { setStatus({ text: d.error || 'Couldn’t read this channel.', err: true }); return; }
       setData(d);
+      markSeen(ch.id, d.messages);
       if (!d.ai) {
         setStatus({ text: 'ANTHROPIC_API_KEY isn’t set, so nothing can be sorted. Showing everything.', err: true });
         return;
@@ -478,6 +498,12 @@ export default function SlackTab({ canAdmin, workspace }) {
 
   const title = current ? tabTitle(`#${current.name}`, 'Slack') : tabTitle('Slack');
   const sorted = useMemo(() => [...(channels || [])].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base', numeric: true })), [channels]);
+  // Quiet channels (nothing for 14+ days) are tucked away; the one you're viewing always shows,
+  // and a quiet channel comes back by itself as soon as it has a new message
+  const quietDays = 14;
+  const quietCount = sorted.filter(c => c.quiet && c.id !== current?.id).length;
+  const listed = showQuiet ? sorted : sorted.filter(c => !c.quiet || c.id === current?.id);
+  const unreadCount = sorted.filter(c => c.unread && c.id !== current?.id).length;
 
   return (
     <>
@@ -507,20 +533,32 @@ export default function SlackTab({ canAdmin, workspace }) {
               <button type="button" onClick={() => loadChannels(true)} title="Reload the channel list from Slack">Refresh</button>
             </div>
             <button type="button" className="dt-sig-side-toggle" onClick={() => setListOpen(o => !o)} aria-expanded={listOpen}>
-              {current ? `#${current.name}` : 'Choose a channel'} ▾
+              {current ? `#${current.name}` : 'Choose a channel'}
+              {unreadCount > 0 && <span className="dt-sig-unread-count">{unreadCount} new</span>} ▾
             </button>
             <ul className="dt-sig-channels">
               {channels === null && <li className="dt-sig-side-note">Loading…</li>}
-              {sorted.map(c => (
+              {listed.map(c => (
                 <li key={c.id}>
-                  <button type="button" className={current?.id === c.id ? 'dt-admin-link active' : 'dt-admin-link'}
+                  <button type="button"
+                    className={`dt-admin-link${current?.id === c.id ? ' active' : ''}${c.unread && current?.id !== c.id ? ' unread' : ''}${c.quiet ? ' quiet' : ''}`}
                     aria-current={current?.id === c.id ? 'page' : undefined}
+                    aria-label={`${c.name}${c.unread && current?.id !== c.id ? ', new messages' : ''}${c.quiet ? ', quiet' : ''}`}
                     onClick={() => { setListOpen(false); load(c); }}>
                     <span className="dt-sig-chname">{c.private ? '🔒' : '#'} {c.name}</span>
+                    {c.unread && current?.id !== c.id && <span className="dt-sig-unread-dot" aria-hidden="true" />}
                     {c.last && <span className="dt-sig-when">{ago(c.last)}</span>}
                   </button>
                 </li>
               ))}
+              {quietCount > 0 && (
+                <li>
+                  <button type="button" className="dt-sig-quiet-toggle" onClick={() => { const v = !showQuiet; setShowQuiet(v); prefs.set('showQuiet', v); }}>
+                    {showQuiet ? `Hide quiet channels` : `Show ${quietCount} quiet channel${quietCount === 1 ? '' : 's'}`}
+                    <span>no messages in {quietDays}+ days</span>
+                  </button>
+                </li>
+              )}
               {channels && channels.length === 0 && !listError && (
                 <li className="dt-sig-side-note">No channels yet. Invite the Slack app to a channel with <code>/invite @app-name</code>, then press Refresh.</li>
               )}
