@@ -729,3 +729,38 @@ html[data-arcade="on"] body::after {
   .dt-mobile-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
   .dt-admin-send { display: flex; flex-direction: column; align-items: flex-start; text-align: left !important; }
 }
+
+/* Slack tab on wider screens: fixed-height layout, channels and messages scroll in their own panels */
+@media (min-width: 769px) {
+  .dt-sig { height: calc(100vh - 60px); min-height: 0; overflow: hidden; }
+  .dt-sig .dt-sig-side { height: 100%; position: static; }
+  .dt-sig .dt-sig-channels { flex: 1; min-height: 0; }
+  .dt-sig-main { display: flex; flex-direction: column; height: 100%; min-height: 0; padding-bottom: 0 !important; }
+  .dt-sig-top { flex: 0 0 auto; }
+  .dt-sig-top .dt-sig-digest { max-height: min(24vh, 240px); overflow-y: auto; overscroll-behavior: contain; margin-bottom: 12px; padding: 10px 16px; }
+  .dt-sig-main { padding-top: 20px !important; }
+  .dt-sig-bar { margin-bottom: 10px; }
+  .dt-sig-cards { margin-bottom: 10px; gap: 8px; }
+  .dt-sig-card { padding: 8px 12px; }
+  .dt-sig-card .v { font-size: 20px; }
+  .dt-sig-people { margin-bottom: 10px; }
+  .dt-sig-feed-wrap { flex: 1 1 auto; min-height: 0; position: relative; display: flex; flex-direction: column; }
+  .dt-sig-feed { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--border); padding: 0 4px 24px; }
+  .dt-sig-feed:focus { outline: none; }
+}
+
+@media (min-width: 769px) and (max-height: 800px) {
+  .dt-sig-card .s { display: none; }
+  .dt-sig-top .dt-sig-digest { max-height: 17vh; }
+}
+
+/* Jump to latest */
+.dt-sig-jump {
+  position: absolute; right: 20px; bottom: 18px; z-index: 5;
+  background: var(--orange); color: #fff; border: none; border-radius: 999px;
+  padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 6px 18px var(--shadow);
+}
+.dt-sig-jump:hover { filter: brightness(1.08); }
+.dt-sig-jump:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (max-width: 768px) { .dt-sig-jump { position: fixed; right: 16px; bottom: 16px; } }

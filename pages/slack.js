@@ -96,6 +96,54 @@ export default function SlackTab({ canAdmin, workspace }) {
   const [expanded, setExpanded] = useState(() => new Set());
   const [listOpen, setListOpen] = useState(false);
   const token = useRef(0);
+  // Messages scroll in their own panel on wider screens (the page scrolls on phones). Opening a
+  // channel jumps to the newest message at the bottom and stays pinned there while the digest and
+  // labels load, until you scroll up. Scrolled up, a "Jump to latest" button appears (or press End).
+  const feedRef = useRef(null);
+  const stick = useRef(true);
+  const openedFor = useRef(null);
+  const [showJump, setShowJump] = useState(false);
+  const isNarrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  const scrollToLatest = (smooth = false) => {
+    const narrow = isNarrow();
+    const f = feedRef.current;
+    const distance = narrow ? document.documentElement.scrollHeight - window.innerHeight - window.scrollY : (f ? f.scrollHeight - f.clientHeight - f.scrollTop : 0);
+    const behavior = smooth && distance < 3000 ? 'smooth' : 'auto'; // long jumps are instant
+    if (narrow) window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
+    else if (f) f.scrollTo({ top: f.scrollHeight, behavior });
+  };
+  const toBottom = () => { if (stick.current) scrollToLatest(); };
+  const jumpToLatest = () => { stick.current = true; setShowJump(false); scrollToLatest(true); };
+  useEffect(() => {
+    if (!data?.channel) return;
+    const key = `${data.channel.id}:${range}`;
+    if (openedFor.current !== key) { openedFor.current = key; stick.current = true; setShowJump(false); }
+    requestAnimationFrame(toBottom);
+  }, [data, digest, range, mode, bots]);
+  useEffect(() => {
+    const f = feedRef.current;
+    if (!f) return;
+    const update = () => {
+      const gap = isNarrow()
+        ? document.documentElement.scrollHeight - window.innerHeight - window.scrollY
+        : f.scrollHeight - f.clientHeight - f.scrollTop;
+      stick.current = gap < 40;
+      setShowJump(gap > 200);
+    };
+    const onKey = e => {
+      if (e.key !== 'End' || /input|select|textarea/i.test(e.target?.tagName || '')) return;
+      e.preventDefault(); stick.current = true; setShowJump(false); scrollToLatest(true);
+    };
+    f.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('keydown', onKey);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => toBottom()) : null;
+    ro?.observe(f);
+    return () => {
+      f.removeEventListener('scroll', update); window.removeEventListener('scroll', update);
+      window.removeEventListener('keydown', onKey); ro?.disconnect();
+    };
+  }, []);
 
   // Restore per-viewer settings
   useEffect(() => {
@@ -123,6 +171,8 @@ export default function SlackTab({ canAdmin, workspace }) {
     prefs.set('current', ch.id);
     try { history.replaceState(null, '', `/slack?c=${ch.id}`); } catch { /* ignore */ }
     setExpanded(new Set());
+    stick.current = true;
+    openedFor.current = null;
     setData(null);
     setDigest(undefined);
     setStatus({ text: `Reading #${ch.name}…`, err: false });
@@ -403,6 +453,7 @@ export default function SlackTab({ canAdmin, workspace }) {
           </nav>
 
           <main className="dt-admin-main dt-sig-main">
+            <div className="dt-sig-top">
             <div className="dt-sig-bar">
               <h1>{current ? `${current.private ? '🔒 ' : '#'}${current.name}` : 'Slack'}</h1>
               <Seg label="Range" options={RANGES} value={range} onChange={changeRange} />
@@ -448,7 +499,15 @@ export default function SlackTab({ canAdmin, workspace }) {
               </>
             )}
 
-            <div className="dt-sig-feed">{renderFeed()}</div>
+            </div>
+            <div className="dt-sig-feed-wrap">
+              <div className="dt-sig-feed" ref={feedRef} tabIndex={-1} aria-label="Messages">{renderFeed()}</div>
+              {showJump && data?.messages?.length > 0 && (
+                <button type="button" className="dt-sig-jump" onClick={jumpToLatest} title="Jump to the newest message (End)">
+                  Jump to latest ↓
+                </button>
+              )}
+            </div>
           </main>
         </div>
       </div>
