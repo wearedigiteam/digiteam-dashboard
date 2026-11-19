@@ -100,6 +100,7 @@ export default function SlackTab({ canAdmin, workspace }) {
   // channel jumps to the newest message at the bottom and stays pinned there while the digest and
   // labels load, until you scroll up. Scrolled up, a "Jump to latest" button appears (or press End).
   const feedRef = useRef(null);
+  const topRef = useRef(null);
   const stick = useRef(true);
   const openedFor = useRef(null);
   const [showJump, setShowJump] = useState(false);
@@ -134,12 +135,33 @@ export default function SlackTab({ canAdmin, workspace }) {
       if (e.key !== 'End' || /input|select|textarea/i.test(e.target?.tagName || '')) return;
       e.preventDefault(); stick.current = true; setShowJump(false); scrollToLatest(true);
     };
+    // Scrolling up stops the pin straight away (a small wheel tick could otherwise be pulled back down)
+    const onFeedWheel = e => { if (e.deltaY < 0) stick.current = false; };
+    // The top section (toolbar, counts, digest) doesn't scroll on wider screens, so the wheel there
+    // moves the messages. The digest scrolls itself first, then hands over to the messages.
+    const top = topRef.current;
+    const onTopWheel = e => {
+      if (isNarrow() || !feedRef.current || e.ctrlKey) return;
+      const box = e.target.closest?.('.dt-sig-digest');
+      if (box) {
+        const canDown = box.scrollTop + box.clientHeight < box.scrollHeight - 1;
+        const canUp = box.scrollTop > 0;
+        if ((e.deltaY > 0 && canDown) || (e.deltaY < 0 && canUp)) return;
+      }
+      e.preventDefault();
+      if (e.deltaY < 0) stick.current = false;
+      const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? feedRef.current.clientHeight : 1;
+      feedRef.current.scrollBy({ top: e.deltaY * unit });
+    };
+    f.addEventListener('wheel', onFeedWheel, { passive: true });
+    top?.addEventListener('wheel', onTopWheel, { passive: false });
     f.addEventListener('scroll', update, { passive: true });
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('keydown', onKey);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => toBottom()) : null;
     ro?.observe(f);
     return () => {
+      f.removeEventListener('wheel', onFeedWheel); top?.removeEventListener('wheel', onTopWheel);
       f.removeEventListener('scroll', update); window.removeEventListener('scroll', update);
       window.removeEventListener('keydown', onKey); ro?.disconnect();
     };
@@ -453,7 +475,7 @@ export default function SlackTab({ canAdmin, workspace }) {
           </nav>
 
           <main className="dt-admin-main dt-sig-main">
-            <div className="dt-sig-top">
+            <div className="dt-sig-top" ref={topRef}>
             <div className="dt-sig-bar">
               <h1>{current ? `${current.private ? '🔒 ' : '#'}${current.name}` : 'Slack'}</h1>
               <Seg label="Range" options={RANGES} value={range} onChange={changeRange} />
