@@ -784,3 +784,15 @@ html[data-arcade="on"] body::after {
 .dt-sig-digest-toggle:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
 .dt-sig-digest-count { font-size: 12px; font-weight: 500; color: var(--muted); }
 .dt-sig-digest.collapsed { padding-top: 8px !important; padding-bottom: 8px !important; }
+
+/* Condensed stats line (replaces the three cards) */
+.dt-sig-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+.dt-sig-stat b { font-size: 15px; font-weight: 700; color: var(--text); margin-right: 2px; }
+.dt-sig-stat.work b { color: var(--green); }
+.dt-sig-stat.noise b { color: var(--muted2); }
+.dt-sig-stat + .dt-sig-stat::before { content: '·'; margin-right: 14px; color: var(--border2); }
+.dt-sig-stats .dt-sig-people { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.dt-sig-stats .dt-sig-person { padding: 2px 10px 2px 2px; font-size: 12px; gap: 6px; }
+.dt-sig-stats .dt-sig-meter { width: 40px; height: 5px; }
+.dt-sig-stats .dt-sig-pct { font-size: 11px; }
+@media (max-width: 768px) { .dt-sig-stats .dt-sig-people { margin-left: 0; width: 100%; } }

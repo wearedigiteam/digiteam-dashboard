@@ -540,23 +540,24 @@ export default function SlackTab({ canAdmin, workspace }) {
 
             {data && stats && data.messages.length > 0 && (
               <>
-                <div className="dt-sig-cards">
-                  <div className="dt-sig-card"><div className="k">Team messages</div><div className="v">{stats.human}</div><div className="s">{stats.botN} bot update{stats.botN === 1 ? '' : 's'}</div></div>
-                  <div className="dt-sig-card"><div className="k">Work</div><div className="v" style={{ color: 'var(--green)' }}>{stats.work}</div><div className="s">{stats.pend ? `${stats.pend} still sorting` : 'kept'}</div></div>
-                  <div className="dt-sig-card"><div className="k">Noise</div><div className="v" style={{ color: 'var(--muted)' }}>{stats.noise}</div><div className="s">{stats.work + stats.noise ? `${stats.pct}% of the chatter` : '—'}</div></div>
+                <div className="dt-sig-stats" role="group" aria-label="Channel summary">
+                  <span className="dt-sig-stat"><b>{stats.human}</b> team message{stats.human === 1 ? '' : 's'}</span>
+                  <span className="dt-sig-stat work"><b>{stats.work}</b> work{stats.pend ? ` (${stats.pend} sorting)` : ''}</span>
+                  <span className="dt-sig-stat noise"><b>{stats.noise}</b> noise{stats.work + stats.noise ? ` (${stats.pct}%)` : ''}</span>
+                  {stats.botN > 0 && <span className="dt-sig-stat"><b>{stats.botN}</b> bot update{stats.botN === 1 ? '' : 's'}</span>}
+                  {stats.ppl.length > 0 && (
+                    <span className="dt-sig-people" aria-label="Noise meter">
+                      {stats.ppl.map(p => (
+                        <span key={p.uid || p.name} className="dt-sig-person" title={`${p.name}: ${p.w} work, ${p.n} noise`}>
+                          <Avatar m={{ uid: p.uid, name: p.name }} people={people} size={20} />
+                          <span>{p.name}</span>
+                          <span className="dt-sig-meter" role="img" aria-label={`${p.pct}% noise`}><i style={{ width: `${p.pct}%` }} /></span>
+                          <span className="dt-sig-pct">{p.pct}%</span>
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </div>
-                {stats.ppl.length > 0 && (
-                  <div className="dt-sig-people" aria-label="Noise meter">
-                    {stats.ppl.map(p => (
-                      <div key={p.uid || p.name} className="dt-sig-person" title={`${p.w} work, ${p.n} noise`}>
-                        <Avatar m={{ uid: p.uid, name: p.name }} people={people} size={24} />
-                        <span>{p.name}</span>
-                        <span className="dt-sig-meter" role="img" aria-label={`${p.pct}% noise`}><i style={{ width: `${p.pct}%` }} /></span>
-                        <span className="dt-sig-pct">{p.pct}% noise</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
                 {digest !== undefined && (
                   <div className={digestOpen ? 'dt-sig-digest' : 'dt-sig-digest collapsed'}>
                     <h2>
