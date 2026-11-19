@@ -9,7 +9,7 @@ import { kv } from '@vercel/kv';
 import { runWeeklySlack } from '../../../lib/weekly-slack';
 import { refreshDashboardData } from '../../../lib/dashboard-data';
 import { checkUserbackHealth } from '../../../lib/health';
-import { presortAll } from '../../../lib/slack-signal';
+import { presortAll, pruneSlackData } from '../../../lib/slack-signal';
 
 // Health check first; if Userback is fine, refresh the cached data (which also runs the score check)
 async function runScoreCheck(startedAt) {
@@ -18,8 +18,13 @@ async function runScoreCheck(startedAt) {
   if (health.ok) projects = (await refreshDashboardData({ full: true })).projects.length; // full scan refreshes the saved open tickets
   // Slack tab: sort the last day's messages so channels open instantly. Uses whatever time is left.
   let slack = null;
+  // Retention first (quick, and must run even if sorting is skipped), then pre-sort with the time left
+  let retention = null;
+  try { retention = await pruneSlackData(); }
+  catch (err) { console.error('Slack retention cleanup failed:', err); retention = { error: err.message }; }
   try { slack = await presortAll({ deadline: startedAt + 55000 }); }
   catch (err) { console.error('Slack pre-sort failed:', err); slack = { error: err.message }; }
+  if (slack) slack.retention = retention;
   return { health, projects, slack };
 }
 

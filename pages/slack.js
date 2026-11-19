@@ -255,6 +255,14 @@ export default function SlackTab({ canAdmin, workspace }) {
   const changeBots = v => { setBots(v); prefs.set('bots', v); };
 
   const people = data?.people || {};
+  // Formatting a message (mrkdwn → HTML) is done once and reused; the cache resets when the people list changes
+  const htmlCache = useMemo(() => new Map(), [data?.people]);
+  const fmt = text => {
+    const k = String(text || '');
+    let h = htmlCache.get(k);
+    if (h === undefined) { h = mrkdwn(k, people); htmlCache.set(k, h); }
+    return h;
+  };
   const labelOf = useCallback(m => {
     if (m.isBot) return 'b';
     const o = data?.overrides?.[m.ts]?.l;
@@ -328,7 +336,7 @@ export default function SlackTab({ canAdmin, workspace }) {
       : <span className={`dt-sig-tag ${tag[0]}`}>{tag[1]}</span>;
     const body = (
       <>
-        <div className="dt-sig-body" dangerouslySetInnerHTML={{ __html: mrkdwn(m.text, people) }} />
+        <div className="dt-sig-body" dangerouslySetInnerHTML={{ __html: fmt(m.text) }} />
         {m.files?.length > 0 && <div className="dt-sig-files">📎 {m.files.join(', ')}</div>}
       </>
     );
