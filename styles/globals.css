@@ -764,3 +764,14 @@ html[data-arcade="on"] body::after {
 .dt-sig-jump:hover { filter: brightness(1.08); }
 .dt-sig-jump:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 @media (max-width: 768px) { .dt-sig-jump { position: fixed; right: 16px; bottom: 16px; } }
+
+/* Grouped messages: same person, back to back */
+.dt-sig-msg.cont { padding-top: 1px; padding-bottom: 3px; margin-top: -4px; }
+.dt-sig-cont-time { font-size: 10.5px; color: var(--muted2); font-family: var(--mono); text-align: right; padding-top: 4px; opacity: 0; white-space: nowrap; }
+.dt-sig-msg.cont:hover .dt-sig-cont-time { opacity: 1; }
+.dt-sig-cont-row { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.dt-sig-cont-row .dt-sig-tag { margin-left: 0; margin-top: 2px; flex-shrink: 0; }
+.dt-sig-cont-row a.open { font-size: 12px; color: var(--muted); text-decoration: none; opacity: 0; margin-top: 2px; }
+.dt-sig-msg.cont:hover .dt-sig-cont-row a.open, .dt-sig-cont-row a.open:focus { opacity: 1; }
+@media (hover: none) { .dt-sig-cont-time { opacity: 0.7; } }
+.dt-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

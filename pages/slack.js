@@ -299,27 +299,50 @@ export default function SlackTab({ canAdmin, workspace }) {
   const visible = l => (mode === 'all' ? true : mode === 'noise' ? l === 'n' : l !== 'n');
 
   // ── Feed ──
-  function renderMessage(m, lab, parentTs) {
+  // cont: same person as the message just above (no one else in between), so skip the name and photo
+  function renderMessage(m, lab, parentTs, cont = false) {
     const tag = { w: ['w', 'Work'], n: ['n', 'Noise'], b: ['b', m.userback ? 'Userback' : 'Bot'], p: ['p', 'Sorting…'] }[lab];
     const canFlip = lab === 'w' || lab === 'n';
     const link = `${workspace}/archives/${data.channel.id}/p${m.ts.replace('.', '')}${parentTs ? `?thread_ts=${parentTs}&cid=${data.channel.id}` : ''}`;
+    const tagEl = canFlip
+      ? <button type="button" className={`dt-sig-tag ${tag[0]} flip`} onClick={() => flip(m)}
+          title="Wrong? Click to flip it for the whole team" aria-label={`${tag[1]}. Click to mark as ${lab === 'w' ? 'noise' : 'work'}`}>
+          {tag[1]}{data.overrides[m.ts] ? ' ✎' : ''}
+        </button>
+      : <span className={`dt-sig-tag ${tag[0]}`}>{tag[1]}</span>;
+    const body = (
+      <>
+        <div className="dt-sig-body" dangerouslySetInnerHTML={{ __html: mrkdwn(m.text, people) }} />
+        {m.files?.length > 0 && <div className="dt-sig-files">📎 {m.files.join(', ')}</div>}
+      </>
+    );
+    const cls = `dt-sig-msg${cont ? ' cont' : ''}${lab === 'n' ? ' noise' : ''}${m.isBot ? ' bot' : ''}`;
+    if (cont) {
+      return (
+        <div key={`${parentTs || ''}${m.ts}`} className={cls}>
+          <span className="dt-sig-cont-time" aria-hidden="true">{fmtTime(m.ts).replace(/\s?[ap]\.?m\.?$/i, '')}</span>
+          <div className="dt-sig-cont-row">
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <span className="dt-sr-only">{m.name} at {fmtTime(m.ts)}: </span>
+              {body}
+            </div>
+            <a className="open" href={link} target="_blank" rel="noopener noreferrer" title="Open in Slack" aria-label="Open in Slack">↗</a>
+            {tagEl}
+          </div>
+        </div>
+      );
+    }
     return (
-      <div key={`${parentTs || ''}${m.ts}`} className={`dt-sig-msg${lab === 'n' ? ' noise' : ''}${m.isBot ? ' bot' : ''}`}>
+      <div key={`${parentTs || ''}${m.ts}`} className={cls}>
         <Avatar m={m} people={people} />
         <div style={{ minWidth: 0 }}>
           <div className="dt-sig-meta">
             <b>{m.name}</b>
             <span className="t">{fmtTime(m.ts)}</span>
             <a className="open" href={link} target="_blank" rel="noopener noreferrer">Open in Slack ↗</a>
-            {canFlip
-              ? <button type="button" className={`dt-sig-tag ${tag[0]} flip`} onClick={() => flip(m)}
-                  title="Wrong? Click to flip it for the whole team" aria-label={`${tag[1]}. Click to mark as ${lab === 'w' ? 'noise' : 'work'}`}>
-                  {tag[1]}{data.overrides[m.ts] ? ' ✎' : ''}
-                </button>
-              : <span className={`dt-sig-tag ${tag[0]}`}>{tag[1]}</span>}
+            {tagEl}
           </div>
-          <div className="dt-sig-body" dangerouslySetInnerHTML={{ __html: mrkdwn(m.text, people) }} />
-          {m.files?.length > 0 && <div className="dt-sig-files">📎 {m.files.join(', ')}</div>}
+          {body}
         </div>
       </div>
     );
@@ -329,11 +352,19 @@ export default function SlackTab({ canAdmin, workspace }) {
   function renderSeq(seq, groupKey) {
     const out = [];
     let hidden = [], botRun = [];
+    // Consecutive messages from the same person, with nothing in between, show as one group
+    let last = null;
+    const pushMsg = item => {
+      const who = item.m.uid || item.m.name;
+      out.push(item.node(!item.m.isBot && last === who));
+      if (item.after) { out.push(item.after); last = null; } else last = item.m.isBot ? null : who;
+    };
     const flushHidden = () => {
       if (!hidden.length) return;
       const key = `${groupKey}:${hidden[0].m.ts}`;
-      if (expanded.has(key)) hidden.forEach(h => { out.push(h.node()); if (h.after) out.push(h.after); });
+      if (expanded.has(key)) hidden.forEach(pushMsg);
       else {
+        last = null;
         const names = [...new Set(hidden.map(h => h.m.name))].join(', ');
         const what = mode === 'noise' ? 'work' : 'noise';
         out.push(
@@ -346,6 +377,7 @@ export default function SlackTab({ canAdmin, workspace }) {
     };
     const flushBots = () => {
       if (!botRun.length) return;
+      last = null;
       if (botRun.length === 1) { out.push(botRun[0].node()); if (botRun[0].after) out.push(botRun[0].after); }
       else {
         const allUb = botRun.every(b => b.m.userback);
@@ -365,8 +397,7 @@ export default function SlackTab({ canAdmin, workspace }) {
       }
       if (!item.show) { flushBots(); hidden.push(item); continue; }
       flushHidden(); flushBots();
-      out.push(item.node());
-      if (item.after) out.push(item.after);
+      pushMsg(item);
     }
     flushHidden(); flushBots();
     return out;
@@ -392,7 +423,7 @@ export default function SlackTab({ canAdmin, workspace }) {
         if (show || keepForThread) anyShown = true;
         let after = null;
         if (replies.length) {
-          const inner = renderSeq(replies.map(r => ({ m: r.m, lab: r.lab, show: visible(r.lab), node: () => renderMessage(r.m, r.lab, m.ts) })), `t${m.ts}`);
+          const inner = renderSeq(replies.map(r => ({ m: r.m, lab: r.lab, show: visible(r.lab), node: cont => renderMessage(r.m, r.lab, m.ts, cont) })), `t${m.ts}`);
           after = (
             <div key={`th-${m.ts}`} className="dt-sig-thread">
               <div className="dt-sig-thread-h">Thread · {replies.length} repl{replies.length > 1 ? 'ies' : 'y'}{!replyShown && mode !== 'all' ? ', all filtered' : ''}</div>
@@ -402,7 +433,7 @@ export default function SlackTab({ canAdmin, workspace }) {
         } else if (m.replies && m.threadError) {
           after = <div key={`th-${m.ts}`} className="dt-sig-thread"><div className="dt-sig-thread-h">Thread · {m.replies} replies (couldn’t load)</div></div>;
         }
-        return { m, lab, show: show || keepForThread, after, node: () => renderMessage(m, lab) };
+        return { m, lab, show: show || keepForThread, after, node: cont => renderMessage(m, lab, null, cont) };
       });
       const body = renderSeq(seq, `d${day}`);
       return body.length ? <section key={day}><div className="dt-sig-day">{day}</div>{body}</section> : null;
