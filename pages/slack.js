@@ -469,7 +469,7 @@ export default function SlackTab({ canAdmin, workspace }) {
   }
 
   const title = current ? tabTitle(`#${current.name}`, 'Slack') : tabTitle('Slack');
-  const sorted = useMemo(() => [...(channels || [])].sort((a, b) => (b.last || 0) - (a.last || 0) || a.name.localeCompare(b.name)), [channels]);
+  const sorted = useMemo(() => [...(channels || [])].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base', numeric: true })), [channels]);
 
   return (
     <>
